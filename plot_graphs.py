@@ -113,7 +113,7 @@ def find_nearest_frame(time_point, frame_numbers):
 def get_session_name(csv_file):
     """Extract session name from CSV filename."""
     base_name = os.path.basename(csv_file)  # Get file name only
-    session_name = "_".join(base_name.split("_")[4:6])  # Extract "Molindu_20250205080611"
+    session_name = "_".join(base_name.split("_")[4:6])  
     return session_name
 
 # def plot_fruit_based_csv(csv_file, json_file, output_base_dir):
@@ -379,7 +379,7 @@ def process_all_csv_in_directory(csv_directory, json_directory, output_directory
 csv_directory = "outputs with 100 trials"
 json_directory = "data with 100 trials"
 output_directory = "output_plots"
-smoothing_technique = "moving_average"  # Change as needed
+smoothing_technique = "moving_average"  
 
 process_all_csv_in_directory(csv_directory, json_directory, output_directory, smoothing_technique)
 

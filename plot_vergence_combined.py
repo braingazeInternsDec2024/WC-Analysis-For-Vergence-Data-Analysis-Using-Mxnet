@@ -3,24 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def plot_average_vergence_per_session(output_directory, smoothing_technique):
-    """
-    Iterates through all session folders inside output_plots/ and generates separate comparison plots
-    for smoothed and non-smoothed vergence data for grapes, orange, and pear.
-    
-    Args:
-        output_directory (str): Path to the output_plots/ directory.
-        smoothing_technique (str): The technique used for smoothing (e.g., 'moving_average').
-    """
+
     # Iterate through all session folders
     for session_folder in os.listdir(output_directory):
         session_path = os.path.join(output_directory, session_folder)
         if not os.path.isdir(session_path):
-            continue  # Skip if it's not a directory
+            continue 
         
         smoothed_path = os.path.join(session_path, "average_plots", f"smoothed_using_{smoothing_technique}")
         not_smoothed_path = os.path.join(session_path, "average_plots", "not_smoothed")
         
-        # Check if necessary folders exist
         if not os.path.exists(smoothed_path) or not os.path.exists(not_smoothed_path):
             continue
         
