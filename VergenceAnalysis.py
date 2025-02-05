@@ -290,7 +290,7 @@ class VergenceCalculator:
                             [df_vergence_calc, pd.DataFrame([new_row])], ignore_index=True
                         )
 
-                        cv2.imshow("Processed Frame", orig_frame)
+                        # cv2.imshow("Processed Frame", orig_frame)
                         if cv2.waitKey(1) & 0xFF == ord("q"):
                             break
 
