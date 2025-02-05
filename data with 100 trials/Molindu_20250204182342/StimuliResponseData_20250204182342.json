@@ -1,0 +1,629 @@
+{
+    "idName": "Molindu ​",
+    "age": "23​",
+    "gender": "Man (Including trans man)",
+    "hasADHD": "No",
+    "ADHDProfile": "I don't have / Unknown",
+    "ADHDMedication": "No",
+    "fruitTimings": [
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:00:01.985",
+            "disappeared": "00:00:03.985"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:05.986",
+            "disappeared": "00:00:07.986"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:09.986",
+            "disappeared": "00:00:11.986"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:00:13.987",
+            "disappeared": "00:00:15.988"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:17.987",
+            "disappeared": "00:00:19.988"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:00:22.020",
+            "disappeared": "00:00:24.055"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:00:26.054",
+            "disappeared": "00:00:28.054"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:30.055",
+            "disappeared": "00:00:32.055"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:34.054",
+            "disappeared": "00:00:36.088"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:38.121",
+            "disappeared": "00:00:40.154"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:42.188",
+            "disappeared": "00:00:44.188"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:46.221",
+            "disappeared": "00:00:48.221"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:50.254",
+            "disappeared": "00:00:52.287"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:00:54.320",
+            "disappeared": "00:00:56.354"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:00:58.387",
+            "disappeared": "00:01:00.420"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:01:02.453",
+            "disappeared": "00:01:04.487"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:06.520",
+            "disappeared": "00:01:08.552"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:10.586",
+            "disappeared": "00:01:12.619"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:14.651",
+            "disappeared": "00:01:16.685"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:18.717",
+            "disappeared": "00:01:20.751"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:01:22.785",
+            "disappeared": "00:01:24.817"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:01:26.850",
+            "disappeared": "00:01:28.883"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:01:30.916",
+            "disappeared": "00:01:32.949"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:01:34.983",
+            "disappeared": "00:01:37.016"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:01:39.049",
+            "disappeared": "00:01:41.083"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:43.116",
+            "disappeared": "00:01:45.149"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:47.182",
+            "disappeared": "00:01:49.215"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:51.249",
+            "disappeared": "00:01:53.282"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:01:55.316",
+            "disappeared": "00:01:57.348"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:01:59.382",
+            "disappeared": "00:02:01.415"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:03.448",
+            "disappeared": "00:02:05.482"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:07.515",
+            "disappeared": "00:02:09.547"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:02:11.580",
+            "disappeared": "00:02:13.614"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:15.647",
+            "disappeared": "00:02:17.680"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:02:19.713",
+            "disappeared": "00:02:21.745"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:02:23.779",
+            "disappeared": "00:02:25.812"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:27.845",
+            "disappeared": "00:02:29.877"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:31.910",
+            "disappeared": "00:02:33.943"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:02:35.975",
+            "disappeared": "00:02:38.009"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:40.041",
+            "disappeared": "00:02:42.074"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:44.107",
+            "disappeared": "00:02:46.140"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:02:48.175",
+            "disappeared": "00:02:50.206"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:02:52.239",
+            "disappeared": "00:02:54.271"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:02:56.304",
+            "disappeared": "00:02:58.337"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:03:00.370",
+            "disappeared": "00:03:02.403"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:03:04.435",
+            "disappeared": "00:03:06.468"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:08.501",
+            "disappeared": "00:03:10.534"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:12.567",
+            "disappeared": "00:03:14.599"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:03:16.633",
+            "disappeared": "00:03:18.665"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:20.699",
+            "disappeared": "00:03:22.732"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:24.765",
+            "disappeared": "00:03:26.796"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:28.830",
+            "disappeared": "00:03:30.863"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:03:32.895",
+            "disappeared": "00:03:34.928"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:03:36.960",
+            "disappeared": "00:03:38.993"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:03:41.026",
+            "disappeared": "00:03:43.059"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:03:45.091",
+            "disappeared": "00:03:47.124"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:49.157",
+            "disappeared": "00:03:51.189"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:03:53.222",
+            "disappeared": "00:03:55.254"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:03:57.288",
+            "disappeared": "00:03:59.320"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:01.353",
+            "disappeared": "00:04:03.386"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:05.418",
+            "disappeared": "00:04:07.451"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:09.483",
+            "disappeared": "00:04:11.516"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:13.548",
+            "disappeared": "00:04:15.582"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:17.614",
+            "disappeared": "00:04:19.646"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:04:21.679",
+            "disappeared": "00:04:23.712"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:04:25.745",
+            "disappeared": "00:04:27.778"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:29.810",
+            "disappeared": "00:04:31.843"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:04:33.876",
+            "disappeared": "00:04:35.909"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:04:37.942",
+            "disappeared": "00:04:39.974"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:42.008",
+            "disappeared": "00:04:44.040"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:46.073",
+            "disappeared": "00:04:48.105"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:50.138",
+            "disappeared": "00:04:52.171"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:54.204",
+            "disappeared": "00:04:56.236"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:04:58.269",
+            "disappeared": "00:05:00.302"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:02.335",
+            "disappeared": "00:05:04.368"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:06.400",
+            "disappeared": "00:05:08.433"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:05:10.465",
+            "disappeared": "00:05:12.498"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:05:14.532",
+            "disappeared": "00:05:16.564"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:05:18.596",
+            "disappeared": "00:05:20.629"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:22.663",
+            "disappeared": "00:05:24.695"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:26.728",
+            "disappeared": "00:05:28.761"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:30.794",
+            "disappeared": "00:05:32.827"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:05:34.859",
+            "disappeared": "00:05:36.892"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:38.925",
+            "disappeared": "00:05:40.958"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:42.992",
+            "disappeared": "00:05:45.024"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:47.057",
+            "disappeared": "00:05:49.090"
+        },
+        {
+            "fruit": "grapes",
+            "type": "Abnormal",
+            "appeared": "00:05:51.123",
+            "disappeared": "00:05:53.156"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:55.189",
+            "disappeared": "00:05:57.222"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:05:59.255",
+            "disappeared": "00:06:01.288"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:03.320",
+            "disappeared": "00:06:05.353"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:07.386",
+            "disappeared": "00:06:09.419"
+        },
+        {
+            "fruit": "orange",
+            "type": "Rare Normal",
+            "appeared": "00:06:11.452",
+            "disappeared": "00:06:13.484"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:15.517",
+            "disappeared": "00:06:17.550"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:19.583",
+            "disappeared": "00:06:21.616"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:23.649",
+            "disappeared": "00:06:25.681"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:27.713",
+            "disappeared": "00:06:29.747"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:31.778",
+            "disappeared": "00:06:33.811"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:35.844",
+            "disappeared": "00:06:37.876"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:39.910",
+            "disappeared": "00:06:41.942"
+        },
+        {
+            "fruit": "pear",
+            "type": "Normal",
+            "appeared": "00:06:43.975",
+            "disappeared": "00:06:46.008"
+        }
+    ],
+    "buttonPressedTimes": [
+        "00:00:23.422",
+        "00:00:26.954",
+        "00:00:55.122",
+        "00:01:32.016",
+        "00:02:00.215",
+        "00:02:12.581",
+        "00:02:20.580",
+        "00:02:36.976",
+        "00:02:57.238",
+        "00:03:05.502",
+        "00:03:37.860",
+        "00:03:54.189",
+        "00:05:11.432",
+        "00:05:15.398",
+        "00:05:19.529",
+        "00:05:35.727",
+        "00:05:51.990"
+    ]
+}
