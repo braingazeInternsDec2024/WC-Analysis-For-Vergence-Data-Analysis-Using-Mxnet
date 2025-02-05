@@ -183,12 +183,6 @@ def get_session_name(csv_file):
 #                 fig.savefig(plot_filename_gaze_arrows)
 #                 plt.close(fig)
 
-# # Example Usage
-# csv_filepath = "outputs with 100 trials/Vergence_Combined_Calculation_of_Molindu_20250205080611.csv"
-# json_filepath = "data with 100 trials/Molindu_20250205080611/StimuliResponseData_20250205080611.json"
-# output_directory = "output_plots"
-
-# plot_fruit_based_csv(csv_filepath, json_filepath, output_directory)
 
 
 import os
@@ -349,7 +343,7 @@ def normalize_session_name(session_name):
 def extract_session_name_from_csv(csv_filepath):
     # Assuming the session name starts after 'Vergence_Combined_Calculation_of_' and ends before the timestamp
     filename = os.path.basename(csv_filepath)
-    session_name = filename.split("Vergence_Combined_Calculation_of_")[1].split(".csv")[0].strip()  # Added strip()
+    session_name = filename.split("Vergence_Combined_Calculation_of_")[1].split(".csv")[0].strip()  
     # Normalize the session name to remove special characters or invisible spaces
     return normalize_session_name(session_name)
 
