@@ -2,205 +2,222 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
+import re
 
 def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_technique=None):
-    """
-    Computes and saves the average vergence values for each fruit in each session
-    for both smoothed and non-smoothed data (direction and gaze arrows).
-    
-    Args:
-        output_base_dir (str): Path to the base directory containing session data.
-        smoothing_technique (str): The technique used for smoothing, if any (e.g., 'moving_average').
-    """
-    
-    # Iterate over all session folders inside output_plots
     for session_folder in os.listdir(output_base_dir):
         session_path = os.path.join(output_base_dir, session_folder)
-        
-        # Ensure we only process directories
+
         if not os.path.isdir(session_path):
             continue
-        
-        # Define paths for smoothed and non-smoothed data with the smoothing technique
-        smoothened_direction_path = os.path.join(session_path, f"smoothened_using_{smoothing_technique}", "direction")
-        smoothened_gaze_arrows_path = os.path.join(session_path, f"smoothened_using_{smoothing_technique}", "gaze_arrows")
-        not_smoothened_direction_path = os.path.join(session_path, "not smoothened", "direction")
-        not_smoothened_gaze_arrows_path = os.path.join(session_path, "not smoothened", "gaze_arrows")
 
-        # Directory for saving average vergence data with the smoothing technique in the name
+        # Define paths for smoothed and non-smoothed data for direction and gaze arrows
+        smoothened_direction_path = os.path.join(session_path, f"smoothened_using_{smoothing_technique}", "direction")
+        not_smoothened_direction_path = os.path.join(session_path, "not smoothened", "direction")
+        smoothened_gaze_arrows_path = os.path.join(session_path, f"smoothened_using_{smoothing_technique}", "gaze arrows")
+        not_smoothened_gaze_arrows_path = os.path.join(session_path, "not smoothened", "gaze arrows")
+
+        # Define paths for storing average plots
         average_plots_path = os.path.join(session_path, "average_plots")
-        smoothed_path = os.path.join(average_plots_path, f"smoothed_using_{smoothing_technique}")  # Updated folder name
+        smoothed_path = os.path.join(average_plots_path, f"smoothed_using_{smoothing_technique}")
         not_smoothed_path = os.path.join(average_plots_path, "not_smoothed")
 
         os.makedirs(smoothed_path, exist_ok=True)
         os.makedirs(not_smoothed_path, exist_ok=True)
 
-        
-        os.makedirs(smoothed_path, exist_ok=True)
-        os.makedirs(not_smoothed_path, exist_ok=True)
-        
-        # Process each fruit (grapes, pears, oranges, etc.) in the session
-        for fruit in os.listdir(smoothened_direction_path):
-            # Paths for current fruit
+        # Get fruit categories dynamically from the smoothed direction folder
+        fruits = os.listdir(smoothened_direction_path) if os.path.exists(smoothened_direction_path) else []
+
+        for fruit in fruits:
             fruit_smoothened_direction_path = os.path.join(smoothened_direction_path, fruit)
-            fruit_smoothened_gaze_arrows_path = os.path.join(smoothened_gaze_arrows_path, fruit)
             fruit_not_smoothened_direction_path = os.path.join(not_smoothened_direction_path, fruit)
+            fruit_smoothened_gaze_arrows_path = os.path.join(smoothened_gaze_arrows_path, fruit)
             fruit_not_smoothened_gaze_arrows_path = os.path.join(not_smoothened_gaze_arrows_path, fruit)
-            
-            if not os.path.isdir(fruit_smoothened_direction_path) or not os.path.isdir(fruit_smoothened_gaze_arrows_path) or \
-               not os.path.isdir(fruit_not_smoothened_direction_path) or not os.path.isdir(fruit_not_smoothened_gaze_arrows_path):
+
+            if not (os.path.isdir(fruit_smoothened_direction_path) and 
+                    os.path.isdir(fruit_not_smoothened_direction_path) and 
+                    os.path.isdir(fruit_smoothened_gaze_arrows_path) and 
+                    os.path.isdir(fruit_not_smoothened_gaze_arrows_path)):
+                print(f"Skipping {fruit} in session {session_folder} due to missing data.")
                 continue
 
-            all_vergence_values_direction_smoothed = []
-            all_vergence_values_gaze_arrows_smoothed = []
-            all_vergence_values_direction_nonsmoothed = []
-            all_vergence_values_gaze_arrows_nonsmoothed = []
-            frame_numbers = None
+            # Initialize dictionaries to store summed vergence values and counts for both direction and gaze arrows
+            sum_direction_smoothed = {}
+            sum_direction_nonsmoothed = {}
+            count_direction_smoothed = {}
+            count_direction_nonsmoothed = {}
 
-            # Collect vergence data from each CSV file for the specific fruit (for all four cases)
-            for file in sorted(os.listdir(fruit_smoothened_direction_path)):
-                if file.endswith(".csv"):
-                    # Load the data from all four directories
-                    df_direction_smoothed = pd.read_csv(os.path.join(fruit_smoothened_direction_path, file))
-                    df_gaze_arrows_smoothed = pd.read_csv(os.path.join(fruit_smoothened_gaze_arrows_path, file))
-                    df_direction_nonsmoothed = pd.read_csv(os.path.join(fruit_not_smoothened_direction_path, file))
-                    df_gaze_arrows_nonsmoothed = pd.read_csv(os.path.join(fruit_not_smoothened_gaze_arrows_path, file))
-                    
-                    if frame_numbers is None:
-                        frame_numbers = df_direction_smoothed["frame_number"].values  # Assuming same frame numbers for all files
-                    
-                    # Column names for vergence
+            sum_gaze_arrows_smoothed = {}
+            sum_gaze_arrows_nonsmoothed = {}
+            count_gaze_arrows_smoothed = {}
+            count_gaze_arrows_nonsmoothed = {}
+
+            # Collect CSV files for direction and gaze arrows
+            direction_files_smoothed = sorted([f for f in os.listdir(fruit_smoothened_direction_path) if f.endswith(".csv")])
+            direction_files_nonsmoothed = sorted([f for f in os.listdir(fruit_not_smoothened_direction_path) if f.endswith(".csv")])
+            gaze_arrows_files_smoothed = sorted([f for f in os.listdir(fruit_smoothened_gaze_arrows_path) if f.endswith(".csv")])
+            gaze_arrows_files_nonsmoothed = sorted([f for f in os.listdir(fruit_not_smoothened_gaze_arrows_path) if f.endswith(".csv")])
+
+            def extract_event_number(filename):
+                match = re.search(r"event_(\d+)", filename)
+                return int(match.group(1)) if match else None
+
+            direction_events_smoothed = {extract_event_number(f): f for f in direction_files_smoothed}
+            direction_events_nonsmoothed = {extract_event_number(f): f for f in direction_files_nonsmoothed}
+            gaze_arrows_events_smoothed = {extract_event_number(f): f for f in gaze_arrows_files_smoothed}
+            gaze_arrows_events_nonsmoothed = {extract_event_number(f): f for f in gaze_arrows_files_nonsmoothed}
+
+            common_events_direction = sorted(set(direction_events_smoothed.keys()) & set(direction_events_nonsmoothed.keys()))
+            common_events_gaze_arrows = sorted(set(gaze_arrows_events_smoothed.keys()) & set(gaze_arrows_events_nonsmoothed.keys()))
+
+            for event_number in common_events_direction:
+                try:
+                    df_direction_smoothed = pd.read_csv(os.path.join(fruit_smoothened_direction_path, direction_events_smoothed[event_number]))
+                    df_direction_nonsmoothed = pd.read_csv(os.path.join(fruit_not_smoothened_direction_path, direction_events_nonsmoothed[event_number]))
+
                     vergence_column_direction = "vergence from direction in degrees"
+
+                    # Process direction data (smoothed and non-smoothed)
+                    for index, row in df_direction_smoothed.iterrows():
+                        frame_number = int(row["frame_number"])
+                        vergence_value = row[vergence_column_direction]
+                        if not pd.isna(vergence_value):
+                            if frame_number not in sum_direction_smoothed:
+                                sum_direction_smoothed[frame_number] = 0
+                                count_direction_smoothed[frame_number] = 0
+                            sum_direction_smoothed[frame_number] += vergence_value
+                            count_direction_smoothed[frame_number] += 1
+
+                    for index, row in df_direction_nonsmoothed.iterrows():
+                        frame_number = int(row["frame_number"])
+                        vergence_value = row[vergence_column_direction]
+                        if not pd.isna(vergence_value):
+                            if frame_number not in sum_direction_nonsmoothed:
+                                sum_direction_nonsmoothed[frame_number] = 0
+                                count_direction_nonsmoothed[frame_number] = 0
+                            sum_direction_nonsmoothed[frame_number] += vergence_value
+                            count_direction_nonsmoothed[frame_number] += 1
+
+                except FileNotFoundError:
+                    print(f"Warning: Missing CSV for event {event_number} in {fruit}, skipping this event.")
+                    continue
+
+            for event_number in common_events_gaze_arrows:
+                try:
+                    df_gaze_arrows_smoothed = pd.read_csv(os.path.join(fruit_smoothened_gaze_arrows_path, gaze_arrows_events_smoothed[event_number]))
+                    df_gaze_arrows_nonsmoothed = pd.read_csv(os.path.join(fruit_not_smoothened_gaze_arrows_path, gaze_arrows_events_nonsmoothed[event_number]))
+
                     vergence_column_gaze_arrows = "vergence from gaze arrows in degrees"
-                    
-                    # Append data for smoothed and non-smoothed cases
-                    if vergence_column_direction in df_direction_smoothed.columns:
-                        all_vergence_values_direction_smoothed.append(df_direction_smoothed[vergence_column_direction].values)
-                    if vergence_column_gaze_arrows in df_gaze_arrows_smoothed.columns:
-                        all_vergence_values_gaze_arrows_smoothed.append(df_gaze_arrows_smoothed[vergence_column_gaze_arrows].values)
-                    if vergence_column_direction in df_direction_nonsmoothed.columns:
-                        all_vergence_values_direction_nonsmoothed.append(df_direction_nonsmoothed[vergence_column_direction].values)
-                    if vergence_column_gaze_arrows in df_gaze_arrows_nonsmoothed.columns:
-                        all_vergence_values_gaze_arrows_nonsmoothed.append(df_gaze_arrows_nonsmoothed[vergence_column_gaze_arrows].values)
 
-            # Interpolation for frame number alignment if needed
-            def align_frames(original_frames, target_frames, data):
-                """ Interpolate data to match the target frame numbers """
-                interp_func = interp1d(original_frames, data, kind='linear', fill_value="extrapolate")
-                return interp_func(target_frames)
-            
-            # Compute ensemble average for all four categories if data exists
-            if (all_vergence_values_direction_smoothed and all_vergence_values_gaze_arrows_smoothed and
-                all_vergence_values_direction_nonsmoothed and all_vergence_values_gaze_arrows_nonsmoothed):
-                
-                # Align frames between smoothed and non-smoothed data
-                aligned_direction_smoothed = np.mean([align_frames(df_direction_smoothed["frame_number"], frame_numbers, data) 
-                                                      for data in all_vergence_values_direction_smoothed], axis=0)
-                aligned_gaze_arrows_smoothed = np.mean([align_frames(df_gaze_arrows_smoothed["frame_number"], frame_numbers, data) 
-                                                       for data in all_vergence_values_gaze_arrows_smoothed], axis=0)
-                aligned_direction_nonsmoothed = np.mean([align_frames(df_direction_nonsmoothed["frame_number"], frame_numbers, data) 
-                                                          for data in all_vergence_values_direction_nonsmoothed], axis=0)
-                aligned_gaze_arrows_nonsmoothed = np.mean([align_frames(df_gaze_arrows_nonsmoothed["frame_number"], frame_numbers, data) 
-                                                           for data in all_vergence_values_gaze_arrows_nonsmoothed], axis=0)
-                
-                # Create a separate folder for the current fruit under the smoothed and not_smoothed directories
-                smoothed_fruit_folder = os.path.join(smoothed_path, fruit)
-                not_smoothed_fruit_folder = os.path.join(not_smoothed_path, fruit)
-                os.makedirs(smoothed_fruit_folder, exist_ok=True)
-                os.makedirs(not_smoothed_fruit_folder, exist_ok=True)
-                
-                # Save the averaged vergence data as CSV for smoothed and non-smoothed
-                avg_df_smoothed = pd.DataFrame({
-                    "frame_number": frame_numbers, 
-                    "average vergence from direction (smoothed, degrees)": aligned_direction_smoothed,
-                    "average vergence from gaze arrows (smoothed, degrees)": aligned_gaze_arrows_smoothed
-                })
-                avg_csv_smoothed_path = os.path.join(smoothed_fruit_folder, f"{fruit}_average.csv")
-                avg_df_smoothed.to_csv(avg_csv_smoothed_path, index=False)
-                
-                avg_df_nonsmoothed = pd.DataFrame({
-                    "frame_number": frame_numbers, 
-                    "average vergence from direction (nonsmoothed, degrees)": aligned_direction_nonsmoothed,
-                    "average vergence from gaze arrows (nonsmoothed, degrees)": aligned_gaze_arrows_nonsmoothed
-                })
-                avg_csv_nonsmoothed_path = os.path.join(not_smoothed_fruit_folder, f"{fruit}_average.csv")
-                avg_df_nonsmoothed.to_csv(avg_csv_nonsmoothed_path, index=False)
-                
-                # Combined Plot (Smoothed)
+                    # Process gaze arrows data (smoothed and non-smoothed)
+                    for index, row in df_gaze_arrows_smoothed.iterrows():
+                        frame_number = int(row["frame_number"])
+                        vergence_value = row[vergence_column_gaze_arrows]
+                        if not pd.isna(vergence_value):
+                            if frame_number not in sum_gaze_arrows_smoothed:
+                                sum_gaze_arrows_smoothed[frame_number] = 0
+                                count_gaze_arrows_smoothed[frame_number] = 0
+                            sum_gaze_arrows_smoothed[frame_number] += vergence_value
+                            count_gaze_arrows_smoothed[frame_number] += 1
+
+                    for index, row in df_gaze_arrows_nonsmoothed.iterrows():
+                        frame_number = int(row["frame_number"])
+                        vergence_value = row[vergence_column_gaze_arrows]
+                        if not pd.isna(vergence_value):
+                            if frame_number not in sum_gaze_arrows_nonsmoothed:
+                                sum_gaze_arrows_nonsmoothed[frame_number] = 0
+                                count_gaze_arrows_nonsmoothed[frame_number] = 0
+                            sum_gaze_arrows_nonsmoothed[frame_number] += vergence_value
+                            count_gaze_arrows_nonsmoothed[frame_number] += 1
+
+                except FileNotFoundError:
+                    print(f"Warning: Missing CSV for event {event_number} in {fruit}, skipping this event.")
+                    continue
+
+            # Compute averages for both direction and gaze arrows
+            frame_numbers = sorted(sum_direction_smoothed.keys())
+            avg_direction_smoothed = [sum_direction_smoothed[f] / count_direction_smoothed[f] for f in frame_numbers]
+            avg_direction_nonsmoothed = [sum_direction_nonsmoothed[f] / count_direction_nonsmoothed[f] for f in frame_numbers]
+
+            avg_gaze_arrows_smoothed = [sum_gaze_arrows_smoothed[f] / count_gaze_arrows_smoothed[f] for f in frame_numbers]
+            avg_gaze_arrows_nonsmoothed = [sum_gaze_arrows_nonsmoothed[f] / count_gaze_arrows_nonsmoothed[f] for f in frame_numbers]
+
+            # Ensure output directories exist for fruit-specific folders
+            smoothed_fruit_folder = os.path.join(smoothed_path, fruit)
+            not_smoothed_fruit_folder = os.path.join(not_smoothed_path, fruit)
+            os.makedirs(smoothed_fruit_folder, exist_ok=True)
+            os.makedirs(not_smoothed_fruit_folder, exist_ok=True)
+
+            # Save CSV for smoothed
+            avg_df_smoothed_direction = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from direction (smoothed, degrees)": avg_direction_smoothed
+            })
+            avg_df_smoothed_gaze_arrows = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from gaze arrows (smoothed, degrees)": avg_gaze_arrows_smoothed
+            })
+            avg_df_nonsmoothed_direction = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from direction (nonsmoothed, degrees)": avg_direction_nonsmoothed
+            })
+            avg_df_nonsmoothed_gaze_arrows = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from gaze arrows (nonsmoothed, degrees)": avg_gaze_arrows_nonsmoothed
+            })
+
+            # Save CSV files
+            avg_df_smoothed_direction.to_csv(os.path.join(smoothed_fruit_folder, f"{fruit}_average_direction.csv"), index=False)
+            avg_df_smoothed_gaze_arrows.to_csv(os.path.join(smoothed_fruit_folder, f"{fruit}_average_gaze_arrows.csv"), index=False)
+            avg_df_nonsmoothed_direction.to_csv(os.path.join(not_smoothed_fruit_folder, f"{fruit}_average_direction.csv"), index=False)
+            avg_df_nonsmoothed_gaze_arrows.to_csv(os.path.join(not_smoothed_fruit_folder, f"{fruit}_average_gaze_arrows.csv"), index=False)
+
+            # Plot and save the results for direction and gaze arrows smoothed and non-smoothed separately
+            if avg_direction_smoothed:
                 plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_smoothed["frame_number"], avg_df_smoothed["average vergence from direction (smoothed, degrees)"], label=f"{fruit.capitalize()} Direction Smoothed", color="blue")
-                plt.plot(avg_df_smoothed["frame_number"], avg_df_smoothed["average vergence from gaze arrows (smoothed, degrees)"], label=f"{fruit.capitalize()} Gaze Arrows Smoothed", color="green")
+                plt.plot(frame_numbers, avg_direction_smoothed, label=f"Smoothed ({smoothing_technique})", color="blue")
+                plt.title(f"Average Vergence from Direction (Smoothed) for {fruit} in {session_folder}")
                 plt.xlabel("Frame Number")
                 plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Average Vergence Plot - {fruit.capitalize()} (Smoothed)")
                 plt.legend()
                 plt.grid(True)
-                avg_plot_smoothed_path = os.path.join(smoothed_fruit_folder, f"{fruit}_average_combined.png")
-                plt.savefig(avg_plot_smoothed_path)
+                plt.savefig(os.path.join(smoothed_fruit_folder, f"average_vergence_{fruit}_smoothed_direction_{session_folder}.png"))
                 plt.close()
 
-                # Plot for Direction (Smoothed)
+            if avg_direction_nonsmoothed:
                 plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_smoothed["frame_number"], avg_df_smoothed["average vergence from direction (smoothed, degrees)"], label=f"{fruit.capitalize()} Direction Smoothed", color="blue")
+                plt.plot(frame_numbers, avg_direction_nonsmoothed, label="Non-Smoothed (Direction)", color="red")
+                plt.title(f"Average Vergence from Direction (Non-Smoothed) for {fruit} in {session_folder}")
                 plt.xlabel("Frame Number")
                 plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Direction Vergence - {fruit.capitalize()} (Smoothed)")
                 plt.legend()
                 plt.grid(True)
-                avg_plot_direction_smoothed_path = os.path.join(smoothed_fruit_folder, f"{fruit}_direction_smoothed.png")
-                plt.savefig(avg_plot_direction_smoothed_path)
+                plt.savefig(os.path.join(not_smoothed_fruit_folder, f"average_vergence_{fruit}_nonsmoothed_direction_{session_folder}.png"))
                 plt.close()
 
-                # Plot for Gaze Arrows (Smoothed)
+            if avg_gaze_arrows_smoothed:
                 plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_smoothed["frame_number"], avg_df_smoothed["average vergence from gaze arrows (smoothed, degrees)"], label=f"{fruit.capitalize()} Gaze Arrows Smoothed", color="green")
+                plt.plot(frame_numbers, avg_gaze_arrows_smoothed, label="Smoothed (Gaze Arrows)", color="green")
+                plt.title(f"Average Vergence from Gaze Arrows (Smoothed) for {fruit} in {session_folder}")
                 plt.xlabel("Frame Number")
                 plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Gaze Arrows Vergence - {fruit.capitalize()} (Smoothed)")
                 plt.legend()
                 plt.grid(True)
-                avg_plot_gaze_arrows_smoothed_path = os.path.join(smoothed_fruit_folder, f"{fruit}_gaze_arrows_smoothed.png")
-                plt.savefig(avg_plot_gaze_arrows_smoothed_path)
+                plt.savefig(os.path.join(smoothed_fruit_folder, f"average_vergence_{fruit}_smoothed_gaze_arrows_{session_folder}.png"))
                 plt.close()
 
-                # Same for non-smoothed
-                # Combined Plot (Non-Smooth)
+            if avg_gaze_arrows_nonsmoothed:
                 plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_nonsmoothed["frame_number"], avg_df_nonsmoothed["average vergence from direction (nonsmoothed, degrees)"], label=f"{fruit.capitalize()} Direction Nonsmoothed", color="red")
-                plt.plot(avg_df_nonsmoothed["frame_number"], avg_df_nonsmoothed["average vergence from gaze arrows (nonsmoothed, degrees)"], label=f"{fruit.capitalize()} Gaze Arrows Nonsmoothed", color="orange")
+                plt.plot(frame_numbers, avg_gaze_arrows_nonsmoothed, label="Non-Smoothed (Gaze Arrows)", color="purple")
+                plt.title(f"Average Vergence from Gaze Arrows (Non-Smoothed) for {fruit} in {session_folder}")
                 plt.xlabel("Frame Number")
                 plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Average Vergence Plot - {fruit.capitalize()} (Not Smoothed)")
                 plt.legend()
                 plt.grid(True)
-                avg_plot_nonsmoothed_path = os.path.join(not_smoothed_fruit_folder, f"{fruit}_average_combined.png")
-                plt.savefig(avg_plot_nonsmoothed_path)
+                plt.savefig(os.path.join(not_smoothed_fruit_folder, f"average_vergence_{fruit}_nonsmoothed_gaze_arrows_{session_folder}.png"))
                 plt.close()
 
-                # Direction Plot (Non-Smooth)
-                plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_nonsmoothed["frame_number"], avg_df_nonsmoothed["average vergence from direction (nonsmoothed, degrees)"], label=f"{fruit.capitalize()} Direction Nonsmoothed", color="red")
-                plt.xlabel("Frame Number")
-                plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Direction Vergence - {fruit.capitalize()} (Not Smoothed)")
-                plt.legend()
-                plt.grid(True)
-                avg_plot_direction_nonsmoothed_path = os.path.join(not_smoothed_fruit_folder, f"{fruit}_direction_nonsmoothed.png")
-                plt.savefig(avg_plot_direction_nonsmoothed_path)
-                plt.close()
-
-                # Gaze Arrows Plot (Non-Smooth)
-                plt.figure(figsize=(12, 6))
-                plt.plot(avg_df_nonsmoothed["frame_number"], avg_df_nonsmoothed["average vergence from gaze arrows (nonsmoothed, degrees)"], label=f"{fruit.capitalize()} Gaze Arrows Nonsmoothed", color="orange")
-                plt.xlabel("Frame Number")
-                plt.ylabel("Average Vergence (degrees)")
-                plt.title(f"Gaze Arrows Vergence - {fruit.capitalize()} (Not Smoothed)")
-                plt.legend()
-                plt.grid(True)
-                avg_plot_gaze_arrows_nonsmoothed_path = os.path.join(not_smoothed_fruit_folder, f"{fruit}_gaze_arrows_nonsmoothed.png")
-                plt.savefig(avg_plot_gaze_arrows_nonsmoothed_path)
-                plt.close()
+            print(f"Saved average plots and CSV for {fruit} in {session_folder}")
 
 # Example Usage
 output_directory = "output_plots"
