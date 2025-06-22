@@ -99,16 +99,39 @@ class VergenceCalculator:
         
         # Process each video
         for video_path, parent_folder in video_files:
+            # Extract video name without extension
+            video_name = os.path.splitext(os.path.basename(video_path))[0]
+            
+            # Create CSV filename with both parent folder and video name
             csv_filename = os.path.join(
                 self.output_directory,
-                f"Vergence_Combined_Calculation_of_{parent_folder}.csv",
+                f"Vergence_Calculation_{video_name}.csv",
             )
 
             print(f"Processing video: {video_path}")
+            print(f"Output will be saved to: {csv_filename}")
             
             # Get rotation metadata
             rotation_angle = self.get_video_rotation(video_path)
             print(f"Rotation metadata: {rotation_angle} degrees")
+
+            cap = cv2.VideoCapture(video_path)
+
+            if not cap.isOpened():
+                print(f"Error: Unable to open video file {video_path}.")
+                continue
+
+            frame_number = 0
+
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            print(
+                f"Video properties: Width={width}, Height={height}, Total Frames={total_frames}, FPS={fps}"
+            )
+            
+            # Continue with the rest of the video processing code...
 
             for folder in os.listdir(self.data_directory):
                 folder_path = os.path.join(self.data_directory, folder)
