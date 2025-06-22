@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
+
 def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_technique=None):
     for session_folder in os.listdir(output_base_dir):
         session_path = os.path.join(output_base_dir, session_folder)
@@ -21,9 +22,15 @@ def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_
         average_plots_path = os.path.join(session_path, "average_plots")
         smoothed_path = os.path.join(average_plots_path, f"smoothed_using_{smoothing_technique}")
         not_smoothed_path = os.path.join(average_plots_path, "not_smoothed")
+        baseline_corrected_path = os.path.join(average_plots_path, "baseline_corrected")
+        smoothed_baseline_corrected_path = os.path.join(baseline_corrected_path, f"smoothed_using_{smoothing_technique}")
+        not_smoothed_baseline_corrected_path = os.path.join(baseline_corrected_path, "not_smoothed")
 
         os.makedirs(smoothed_path, exist_ok=True)
         os.makedirs(not_smoothed_path, exist_ok=True)
+        os.makedirs(baseline_corrected_path, exist_ok=True)
+        os.makedirs(smoothed_baseline_corrected_path, exist_ok=True)
+        os.makedirs(not_smoothed_baseline_corrected_path, exist_ok=True)
 
         # Get fruit categories dynamically from the smoothed direction folder
         fruits = os.listdir(smoothened_direction_path) if os.path.exists(smoothened_direction_path) else []
@@ -34,9 +41,9 @@ def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_
             fruit_smoothened_gaze_arrows_path = os.path.join(smoothened_gaze_arrows_path, fruit)
             fruit_not_smoothened_gaze_arrows_path = os.path.join(not_smoothened_gaze_arrows_path, fruit)
 
-            if not (os.path.isdir(fruit_smoothened_direction_path) and 
-                    os.path.isdir(fruit_not_smoothened_direction_path) and 
-                    os.path.isdir(fruit_smoothened_gaze_arrows_path) and 
+            if not (os.path.isdir(fruit_smoothened_direction_path) and
+                    os.path.isdir(fruit_not_smoothened_direction_path) and
+                    os.path.isdir(fruit_smoothened_gaze_arrows_path) and
                     os.path.isdir(fruit_not_smoothened_gaze_arrows_path)):
                 print(f"Skipping {fruit} in session {session_folder} due to missing data.")
                 continue
@@ -142,13 +149,32 @@ def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_
             avg_gaze_arrows_smoothed = [sum_gaze_arrows_smoothed[f] / count_gaze_arrows_smoothed[f] for f in frame_numbers]
             avg_gaze_arrows_nonsmoothed = [sum_gaze_arrows_nonsmoothed[f] / count_gaze_arrows_nonsmoothed[f] for f in frame_numbers]
 
+            # Baseline correction
+            baseline_frames = 10
+            baseline_direction_smoothed = np.mean(avg_direction_smoothed[:min(baseline_frames, len(avg_direction_smoothed))]) if avg_direction_smoothed else 0
+            baseline_direction_nonsmoothed = np.mean(avg_direction_nonsmoothed[:min(baseline_frames, len(avg_direction_nonsmoothed))]) if avg_direction_nonsmoothed else 0
+            baseline_gaze_arrows_smoothed = np.mean(avg_gaze_arrows_smoothed[:min(baseline_frames, len(avg_gaze_arrows_smoothed))]) if avg_gaze_arrows_smoothed else 0
+            baseline_gaze_arrows_nonsmoothed = np.mean(avg_gaze_arrows_nonsmoothed[:min(baseline_frames, len(avg_gaze_arrows_nonsmoothed))]) if avg_gaze_arrows_nonsmoothed else 0
+
+            avg_direction_smoothed_corrected = [val - baseline_direction_smoothed for val in avg_direction_smoothed]
+            avg_direction_nonsmoothed_corrected = [val - baseline_direction_nonsmoothed for val in avg_direction_nonsmoothed]
+            avg_gaze_arrows_smoothed_corrected = [val - baseline_gaze_arrows_smoothed for val in avg_gaze_arrows_smoothed]
+            avg_gaze_arrows_nonsmoothed_corrected = [val - baseline_gaze_arrows_nonsmoothed for val in avg_gaze_arrows_nonsmoothed]
+
+
             # Ensure output directories exist for fruit-specific folders
             smoothed_fruit_folder = os.path.join(smoothed_path, fruit)
             not_smoothed_fruit_folder = os.path.join(not_smoothed_path, fruit)
+            smoothed_baseline_corrected_fruit_folder = os.path.join(smoothed_baseline_corrected_path, fruit)
+            not_smoothed_baseline_corrected_fruit_folder = os.path.join(not_smoothed_baseline_corrected_path, fruit)
+
             os.makedirs(smoothed_fruit_folder, exist_ok=True)
             os.makedirs(not_smoothed_fruit_folder, exist_ok=True)
+            os.makedirs(smoothed_baseline_corrected_fruit_folder, exist_ok=True)
+            os.makedirs(not_smoothed_baseline_corrected_fruit_folder, exist_ok=True)
 
-            # Save CSV for smoothed
+
+            # Save CSV for smoothed and non-smoothed and baseline corrected data
             avg_df_smoothed_direction = pd.DataFrame({
                 "frame_number": frame_numbers,
                 "average vergence from direction (smoothed, degrees)": avg_direction_smoothed
@@ -166,13 +192,37 @@ def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_
                 "average vergence from gaze arrows (nonsmoothed, degrees)": avg_gaze_arrows_nonsmoothed
             })
 
+            avg_df_smoothed_direction_corrected = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from direction (smoothed, baseline corrected, degrees)": avg_direction_smoothed_corrected
+            })
+            avg_df_smoothed_gaze_arrows_corrected = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from gaze arrows (smoothed, baseline corrected, degrees)": avg_gaze_arrows_smoothed_corrected
+            })
+            avg_df_nonsmoothed_direction_corrected = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from direction (nonsmoothed, baseline corrected, degrees)": avg_direction_nonsmoothed_corrected
+            })
+            avg_df_nonsmoothed_gaze_arrows_corrected = pd.DataFrame({
+                "frame_number": frame_numbers,
+                "average vergence from gaze arrows (nonsmoothed, baseline corrected, degrees)": avg_gaze_arrows_nonsmoothed_corrected
+            })
+
+
             # Save CSV files
             avg_df_smoothed_direction.to_csv(os.path.join(smoothed_fruit_folder, f"{fruit}_average_direction.csv"), index=False)
             avg_df_smoothed_gaze_arrows.to_csv(os.path.join(smoothed_fruit_folder, f"{fruit}_average_gaze_arrows.csv"), index=False)
             avg_df_nonsmoothed_direction.to_csv(os.path.join(not_smoothed_fruit_folder, f"{fruit}_average_direction.csv"), index=False)
             avg_df_nonsmoothed_gaze_arrows.to_csv(os.path.join(not_smoothed_fruit_folder, f"{fruit}_average_gaze_arrows.csv"), index=False)
 
-            # Plot and save the results for direction and gaze arrows smoothed and non-smoothed separately
+            avg_df_smoothed_direction_corrected.to_csv(os.path.join(smoothed_baseline_corrected_fruit_folder, f"{fruit}_average_direction_baseline_corrected.csv"), index=False)
+            avg_df_smoothed_gaze_arrows_corrected.to_csv(os.path.join(smoothed_baseline_corrected_fruit_folder, f"{fruit}_average_gaze_arrows_baseline_corrected.csv"), index=False)
+            avg_df_nonsmoothed_direction_corrected.to_csv(os.path.join(not_smoothed_baseline_corrected_fruit_folder, f"{fruit}_average_direction_baseline_corrected.csv"), index=False)
+            avg_df_nonsmoothed_gaze_arrows_corrected.to_csv(os.path.join(not_smoothed_baseline_corrected_fruit_folder, f"{fruit}_average_gaze_arrows_baseline_corrected.csv"), index=False)
+
+
+            # Plot and save the results for direction and gaze arrows smoothed and non-smoothed separately and baseline corrected
             if avg_direction_smoothed:
                 plt.figure(figsize=(12, 6))
                 plt.plot(frame_numbers, avg_direction_smoothed, label=f"Smoothed ({smoothing_technique})", color="blue")
@@ -217,10 +267,60 @@ def compute_and_save_average_vergence_for_all_fruits(output_base_dir, smoothing_
                 plt.savefig(os.path.join(not_smoothed_fruit_folder, f"average_vergence_{fruit}_nonsmoothed_gaze_arrows_{session_folder}.png"))
                 plt.close()
 
-            print(f"Saved average plots and CSV for {fruit} in {session_folder}")
+
+            # Plot and save the baseline corrected results
+            if avg_direction_smoothed_corrected:
+                plt.figure(figsize=(12, 6))
+                plt.plot(frame_numbers, avg_direction_smoothed_corrected, label=f"Smoothed ({smoothing_technique}) Baseline Corrected", color="blue")
+                plt.axhline(y=0, color='r', linestyle='--') # Add horizontal line at y=0
+                plt.title(f"Baseline Corrected Average Vergence from Direction (Smoothed) for {fruit} in {session_folder}")
+                plt.xlabel("Frame Number")
+                plt.ylabel("Average Vergence (Baseline Corrected, degrees)")
+                plt.legend()
+                plt.grid(True)
+                plt.savefig(os.path.join(smoothed_baseline_corrected_fruit_folder, f"average_vergence_{fruit}_smoothed_direction_baseline_corrected_{session_folder}.png"))
+                plt.close()
+
+            if avg_direction_nonsmoothed_corrected:
+                plt.figure(figsize=(12, 6))
+                plt.plot(frame_numbers, avg_direction_nonsmoothed_corrected, label="Non-Smoothed (Direction) Baseline Corrected", color="red")
+                plt.axhline(y=0, color='r', linestyle='--') # Add horizontal line at y=0
+                plt.title(f"Baseline Corrected Average Vergence from Direction (Non-Smoothed) for {fruit} in {session_folder}")
+                plt.xlabel("Frame Number")
+                plt.ylabel("Average Vergence (Baseline Corrected, degrees)")
+                plt.legend()
+                plt.grid(True)
+                plt.savefig(os.path.join(not_smoothed_baseline_corrected_fruit_folder, f"average_vergence_{fruit}_nonsmoothed_direction_baseline_corrected_{session_folder}.png"))
+                plt.close()
+
+            if avg_gaze_arrows_smoothed_corrected:
+                plt.figure(figsize=(12, 6))
+                plt.plot(frame_numbers, avg_gaze_arrows_smoothed_corrected, label="Smoothed (Gaze Arrows) Baseline Corrected", color="green")
+                plt.axhline(y=0, color='r', linestyle='--') # Add horizontal line at y=0
+                plt.title(f"Baseline Corrected Average Vergence from Gaze Arrows (Smoothed) for {fruit} in {session_folder}")
+                plt.xlabel("Frame Number")
+                plt.ylabel("Average Vergence (Baseline Corrected, degrees)")
+                plt.legend()
+                plt.grid(True)
+                plt.savefig(os.path.join(smoothed_baseline_corrected_fruit_folder, f"average_vergence_{fruit}_smoothed_gaze_arrows_baseline_corrected_{session_folder}.png"))
+                plt.close()
+
+            if avg_gaze_arrows_nonsmoothed_corrected:
+                plt.figure(figsize=(12, 6))
+                plt.plot(frame_numbers, avg_gaze_arrows_nonsmoothed_corrected, label="Non-Smoothed (Gaze Arrows) Baseline Corrected", color="purple")
+                plt.axhline(y=0, color='r', linestyle='--') # Add horizontal line at y=0
+                plt.title(f"Baseline Corrected Average Vergence from Gaze Arrows (Non-Smoothed) for {fruit} in {session_folder}")
+                plt.xlabel("Frame Number")
+                plt.ylabel("Average Vergence (Baseline Corrected, degrees)")
+                plt.legend()
+                plt.grid(True)
+                plt.savefig(os.path.join(not_smoothed_baseline_corrected_fruit_folder, f"average_vergence_{fruit}_nonsmoothed_gaze_arrows_baseline_corrected_{session_folder}.png"))
+                plt.close()
+
+
+            print(f"Saved average and baseline corrected plots and CSV for {fruit} in {session_folder}")
 
 # Example Usage
 output_directory = "output_plots"
 compute_and_save_average_vergence_for_all_fruits(output_directory, smoothing_technique="moving_median_avg_filter")
-
 

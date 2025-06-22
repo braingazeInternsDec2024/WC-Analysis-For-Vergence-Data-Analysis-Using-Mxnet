@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
+from scipy.signal import medfilt, convolve, welch
 
 # def get_nearest_frame(csv_filepath, time_str):
 #     """
@@ -120,6 +121,14 @@ def median_smoothing(data, size=5):
     # Returning the median of the entire data series as a placeholder. Consider window-based median filtering if needed.
     return np.median(data)
 
+def moving_median_avg_filter(data):
+    median_window_size = 31
+    moving_avg_window_size = 31
+
+    moving_median_filtered_signal = medfilt(data, kernel_size=median_window_size)
+    moving_median_avg_filtered_signal = moving_average_filter(moving_median_filtered_signal, window_size=moving_avg_window_size)
+    return moving_median_avg_filtered_signal
+
 def apply_smoothing(data, technique="moving_average"):
     """Apply the selected smoothing technique."""
     if technique == "moving_average":
@@ -132,8 +141,15 @@ def apply_smoothing(data, technique="moving_average"):
         return savitzky_golay_smoothing(data)
     elif technique == "median":
         return median_smoothing(data) 
+    elif technique == "moving_median_avg_filter":
+        return moving_median_avg_filter(data)
     else:
         return data  # No smoothing
+    
+def moving_average_filter(data, window_size):
+    window = np.ones(int(window_size)) / float(window_size)
+    return convolve(data, window, mode='valid')
+
 
 def plot_fruit_based_csv(csv_file, json_file, output_base_dir, smoothing_technique=None):
     """Generate fruit-specific plots, both original and smoothed, as separate plots for direction and gaze_arrows."""
@@ -166,8 +182,8 @@ def plot_fruit_based_csv(csv_file, json_file, output_base_dir, smoothing_techniq
 
             for i, start in enumerate(timings):
                 start_idx = find_nearest_frame(start, time_stamps) + 1
-                frame_start = max(1, start_idx - 10)
-                frame_end = min(len(time_stamps) - 1, start_idx + 75)
+                frame_start = max(1, start_idx - 30)
+                frame_end = min(len(time_stamps) - 1, start_idx + 60)
                 df_window = df.iloc[frame_start:frame_end].copy()
 
                 df_window["frame_number"] = np.arange(len(df_window))
@@ -263,6 +279,6 @@ def process_all_csv_in_directory(csv_directory, json_directory, output_directory
 csv_directory = "outputs with 100 trials"
 json_directory = "data with 100 trials"
 output_directory = "output_plots"
-smoothing_technique = "moving_average"  # Change to "exponential", "gaussian", "savgol", "median", or None for no smoothing
+smoothing_technique = "moving_median_avg_filter"  # Change to "exponential", "gaussian", "savgol", "median", or None for no smoothing
 
 process_all_csv_in_directory(csv_directory, json_directory, output_directory, smoothing_technique)
