@@ -86,141 +86,215 @@ class VergenceCalculator:
             ]
         )
 
-        for folder in os.listdir(self.data_directory):
-            folder_path = os.path.join(self.data_directory, folder)
-    
-            if os.path.isdir(folder_path):  
-                for f in os.listdir(folder_path):
-                    video_path = ''
-                    if f.endswith(".mp4"):  
-                        video_path = os.path.join(folder_path, f)
+        # Find all MP4 files recursively
+        video_files = []
+        for root, dirs, files in os.walk(self.data_directory):
+            for file in files:
+                if file.endswith(".mp4"):
+                    video_path = os.path.join(root, file)
+                    parent_folder = os.path.basename(os.path.dirname(video_path))
+                    video_files.append((video_path, parent_folder))
+        
+        print(f"Found {len(video_files)} MP4 files in total")
+        
+        # Process each video
+        for video_path, parent_folder in video_files:
+            csv_filename = os.path.join(
+                self.output_directory,
+                f"Vergence_Combined_Calculation_of_{parent_folder}.csv",
+            )
 
-                    csv_filename = os.path.join(
-                        self.output_directory,
-                        f"Vergence_Combined_Calculation_of_{os.path.basename(folder_path)}.csv",
-                    )
+            print(f"Processing video: {video_path}")
+            
+            # Get rotation metadata
+            rotation_angle = self.get_video_rotation(video_path)
+            print(f"Rotation metadata: {rotation_angle} degrees")
 
+            for folder in os.listdir(self.data_directory):
+                folder_path = os.path.join(self.data_directory, folder)
+            
+                if os.path.isdir(folder_path):  
+                    for f in os.listdir(folder_path):
+                        video_path = ''
+                        if f.endswith(".mp4"):  
+                            video_path = os.path.join(folder_path, f)
 
-                    print(f"Processing video: {video_path}")
-                    print(f"Processing video: {video_path}")
-
-                    # Get rotation metadata
-                    rotation_angle = self.get_video_rotation(video_path)
-                    print(f"Rotation metadata: {rotation_angle} degrees")
-
-                    cap = cv2.VideoCapture(video_path)
-                    video_name = os.path.splitext(os.path.basename(video_path))[0]
-
-                    if not cap.isOpened():
-                        print(f"Error: Unable to open video file {video_path}.")
-                        continue
-
-                    frame_number = 0
-
-                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                    fps = cap.get(cv2.CAP_PROP_FPS)
-                    print(
-                        f"Video properties: Width={width}, Height={height}, Total Frames={total_frames}, FPS={fps}"
-                    )
-
-                    # Define frame size for head pose framework:
-                    hp = HeadPoseEstimator("weights/object_points.npy", width, height)
-
-                    while cap.isOpened():
-                        ret, frame = cap.read()
-                        if not ret:
-                            print("End of video reached.")
-                            break
-
-                        # Rotate frame based on metadata
-                        if rotation_angle == 90:
-                            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                        elif rotation_angle == 180:
-                            frame = cv2.rotate(frame, cv2.ROTATE_180)
-                        elif rotation_angle == 270:
-                            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-                        gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                        gray_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-                        gray_image = cv2.equalizeHist(gray_image)
-
-                        frame_number += 1
-                        timestamp = (frame_number - 1) / fps
-                        print(f"Processing frame {frame_number}, Timestamp: {timestamp:.2f}s")
-
-                        # Define checkerboard dimensions
-                        checkerboard_size = (6, 9)
-                        square_size = 25  # mm
-
-                        # Prepare object points
-                        objp = np.zeros(
-                            (checkerboard_size[0] * checkerboard_size[1], 3), np.float32
-                        )
-                        objp[:, :2] = np.mgrid[
-                            0 : checkerboard_size[0], 0 : checkerboard_size[1]
-                        ].T.reshape(-1, 2)
-                        objp *= square_size
-
-                        # Detect corners
-                        ret2, corners = cv2.findChessboardCorners(
-                            gray_image,
-                            checkerboard_size,
-                            cv2.CALIB_CB_ADAPTIVE_THRESH
-                            + cv2.CALIB_CB_NORMALIZE_IMAGE
-                            + cv2.CALIB_CB_FAST_CHECK,
+                        csv_filename = os.path.join(
+                            self.output_directory,
+                            f"Vergence_Combined_Calculation_of_{os.path.basename(folder_path)}.csv",
                         )
 
-                        focal_length = width
 
-                        if ret2:
-                            _, mtx, dist, _, _ = cv2.calibrateCamera(
-                                [objp], [corners], gray_image.shape[::-1], None, None
-                            )
-                            focal_length = mtx[0, 0]  # Extract focal length in pixels
-                            print(f"Focal length: {focal_length}")
+                        print(f"Processing video: {video_path}")
+                        print(f"Processing video: {video_path}")
 
-                        center = (width / 2, height / 2)
-                        camera_matrix = np.array(
-                            [
-                                [focal_length, 0, center[0]],
-                                [0, focal_length, center[1]],
-                                [0, 0, 1],
-                            ],
-                            dtype=np.float32,
+                        # Get rotation metadata
+                        rotation_angle = self.get_video_rotation(video_path)
+                        print(f"Rotation metadata: {rotation_angle} degrees")
+
+                        cap = cv2.VideoCapture(video_path)
+                        video_name = os.path.splitext(os.path.basename(video_path))[0]
+
+                        if not cap.isOpened():
+                            print(f"Error: Unable to open video file {video_path}.")
+                            continue
+
+                        frame_number = 0
+
+                        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        fps = cap.get(cv2.CAP_PROP_FPS)
+                        print(
+                            f"Video properties: Width={width}, Height={height}, Total Frames={total_frames}, FPS={fps}"
                         )
 
-                        # Using first model
-                        # bboxes = fd.detect(frame)
-                        bboxes = list(fd.detect(frame))
-                        print(f"Detected {len(bboxes)} faces.")
+                        # Define frame size for head pose framework:
+                        hp = HeadPoseEstimator("weights/object_points.npy", width, height)
 
-                        for landmarks in fa.get_landmarks(frame, bboxes, calibrate=True):
-                            # Calculate head pose
-                            _, euler_angle = hp.get_head_pose(landmarks)
-                            pitch, yaw, roll = euler_angle[:, 0]
+                        while cap.isOpened():
+                            ret, frame = cap.read()
+                            if not ret:
+                                print("End of video reached.")
+                                break
 
-                            eye_markers = np.take(landmarks, fa.eye_bound, axis=0)
-                            eye_centers = np.average(eye_markers, axis=1)
-                            eye_lengths = (landmarks[[39, 93]] - landmarks[[35, 89]])[:, 0]
+                            # Rotate frame based on metadata
+                            if rotation_angle == 90:
+                                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                            elif rotation_angle == 180:
+                                frame = cv2.rotate(frame, cv2.ROTATE_180)
+                            elif rotation_angle == 270:
+                                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-                            # Compute left pupil size and radius
-                            iris_left = gs.get_mesh(frame, eye_lengths[0], eye_centers[0])
-                            pupil_left, radius_pupil_left = gs.draw_pupil(
-                                iris_left, frame, thickness=1
+                            gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                            gray_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
+                            gray_image = cv2.equalizeHist(gray_image)
+
+                            frame_number += 1
+                            timestamp = (frame_number - 1) / fps
+                            print(f"Processing frame {frame_number}, Timestamp: {timestamp:.2f}s")
+
+                            # Define checkerboard dimensions
+                            checkerboard_size = (6, 9)
+                            square_size = 25  # mm
+
+                            # Prepare object points
+                            objp = np.zeros(
+                                (checkerboard_size[0] * checkerboard_size[1], 3), np.float32
+                            )
+                            objp[:, :2] = np.mgrid[
+                                0 : checkerboard_size[0], 0 : checkerboard_size[1]
+                            ].T.reshape(-1, 2)
+                            objp *= square_size
+
+                            # Detect corners
+                            ret2, corners = cv2.findChessboardCorners(
+                                gray_image,
+                                checkerboard_size,
+                                cv2.CALIB_CB_ADAPTIVE_THRESH
+                                + cv2.CALIB_CB_NORMALIZE_IMAGE
+                                + cv2.CALIB_CB_FAST_CHECK,
                             )
 
-                            # Compute right pupil size and radius
-                            iris_right = gs.get_mesh(frame, eye_lengths[1], eye_centers[1])
-                            pupil_right, radius_pupil_right = gs.draw_pupil(
-                                iris_right, frame, thickness=1
+                            focal_length = width
+
+                            if ret2:
+                                _, mtx, dist, _, _ = cv2.calibrateCamera(
+                                    [objp], [corners], gray_image.shape[::-1], None, None
+                                )
+                                focal_length = mtx[0, 0]  # Extract focal length in pixels
+                                print(f"Focal length: {focal_length}")
+
+                            center = (width / 2, height / 2)
+                            camera_matrix = np.array(
+                                [
+                                    [focal_length, 0, center[0]],
+                                    [0, focal_length, center[1]],
+                                    [0, 0, 1],
+                                ],
+                                dtype=np.float32,
                             )
 
-                            pupils = np.array([pupil_left, pupil_right])
-                            poi = (
-                                landmarks[[35, 89]],
-                                landmarks[[39, 93]],
+                            # Using first model
+                            # bboxes = fd.detect(frame)
+                            bboxes = list(fd.detect(frame))
+                            print(f"Detected {len(bboxes)} faces.")
+
+                            for landmarks in fa.get_landmarks(frame, bboxes, calibrate=True):
+                                # Calculate head pose
+                                _, euler_angle = hp.get_head_pose(landmarks)
+                                pitch, yaw, roll = euler_angle[:, 0]
+
+                                eye_markers = np.take(landmarks, fa.eye_bound, axis=0)
+                                eye_centers = np.average(eye_markers, axis=1)
+                                eye_lengths = (landmarks[[39, 93]] - landmarks[[35, 89]])[:, 0]
+
+                                # Compute left pupil size and radius
+                                iris_left = gs.get_mesh(frame, eye_lengths[0], eye_centers[0])
+                                pupil_left, radius_pupil_left = gs.draw_pupil(
+                                    iris_left, frame, thickness=1
+                                )
+
+                                # Compute right pupil size and radius
+                                iris_right = gs.get_mesh(frame, eye_lengths[1], eye_centers[1])
+                                pupil_right, radius_pupil_right = gs.draw_pupil(
+                                    iris_right, frame, thickness=1
+                                )
+
+                                pupils = np.array([pupil_left, pupil_right])
+                                poi = (
+                                    landmarks[[35, 89]],
+                                    landmarks[[39, 93]],
+                                    pupils,
+                                    eye_centers,
+                                )
+
+                                # Calculate vergence
+                                delta, angle, (Lx, Ly, Lz), (Rx, Ry, Rz) = (
+                                    calculate_gaze_and_vergence_using_eye_direction(frame, poi)
+                                )
+
+                                angle_arrows, offset_left, offset_right = (
+                                    process_gaze_data_and_vergence_using_eye_arrows(
+                                        delta, yaw, roll, pupils
+                                    )
+                                )
+
+                                # Prepare a new row of data with the timestamp
+                                new_row = {
+                                    "video file name": os.path.basename(video_path),
+                                    "frame number": frame_number,
+                                    "timestamp (s)": timestamp,
+                                    "ML model": "WC Analysis",
+                                    "pupil left radius": radius_pupil_left,
+                                    "pupil right radius": radius_pupil_right,
+                                    "vergence from direction in radians": angle,
+                                    "vergence from direction in degrees": np.degrees(angle),
+                                    "vergence from gaze arrows in radians": angle_arrows,
+                                    "vergence from gaze arrows in degrees": np.degrees(
+                                        angle_arrows
+                                    ),
+                                }
+
+                                df_vergence_calc = pd.concat(
+                                    [df_vergence_calc, pd.DataFrame([new_row])], ignore_index=True
+                                )
+
+                            # Using second model (EyeNet)
+                            orig_frame = frame.copy()
+
+                            leftmost_points = [
+                                landmarks[35],
+                                landmarks[89],
+                            ]
+
+                            rightmost_points = [landmarks[39], landmarks[93]]
+
+                            # Annotate the POI on the frame
+                            self.annotate_pois(
+                                orig_frame,
+                                leftmost_points,
+                                rightmost_points,
                                 pupils,
                                 eye_centers,
                             )
@@ -236,68 +310,18 @@ class VergenceCalculator:
                                 )
                             )
 
-                            # Prepare a new row of data with the timestamp
-                            new_row = {
-                                "video file name": os.path.basename(video_path),
-                                "frame number": frame_number,
-                                "timestamp (s)": timestamp,
-                                "ML model": "WC Analysis",
-                                "pupil left radius": radius_pupil_left,
-                                "pupil right radius": radius_pupil_right,
-                                "vergence from direction in radians": angle,
-                                "vergence from direction in degrees": np.degrees(angle),
-                                "vergence from gaze arrows in radians": angle_arrows,
-                                "vergence from gaze arrows in degrees": np.degrees(
-                                    angle_arrows
-                                ),
-                            }
-
                             df_vergence_calc = pd.concat(
                                 [df_vergence_calc, pd.DataFrame([new_row])], ignore_index=True
                             )
 
-                        # Using second model (EyeNet)
-                        orig_frame = frame.copy()
+                            # cv2.imshow("Processed Frame", orig_frame)
+                            if cv2.waitKey(1) & 0xFF == ord("q"):
+                                break
 
-                        leftmost_points = [
-                            landmarks[35],
-                            landmarks[89],
-                        ]
+                        cap.release()
+                        print(f"Finished processing video: {video_path}")
 
-                        rightmost_points = [landmarks[39], landmarks[93]]
-
-                        # Annotate the POI on the frame
-                        self.annotate_pois(
-                            orig_frame,
-                            leftmost_points,
-                            rightmost_points,
-                            pupils,
-                            eye_centers,
-                        )
-
-                        # Calculate vergence
-                        delta, angle, (Lx, Ly, Lz), (Rx, Ry, Rz) = (
-                            calculate_gaze_and_vergence_using_eye_direction(frame, poi)
-                        )
-
-                        angle_arrows, offset_left, offset_right = (
-                            process_gaze_data_and_vergence_using_eye_arrows(
-                                delta, yaw, roll, pupils
-                            )
-                        )
-
-                        df_vergence_calc = pd.concat(
-                            [df_vergence_calc, pd.DataFrame([new_row])], ignore_index=True
-                        )
-
-                        # cv2.imshow("Processed Frame", orig_frame)
-                        if cv2.waitKey(1) & 0xFF == ord("q"):
-                            break
-
-                    cap.release()
-                    print(f"Finished processing video: {video_path}")
-
-                    df_vergence_calc.to_csv(csv_filename, index=False)
+                        df_vergence_calc.to_csv(csv_filename, index=False)
             # print(f"Combined data saved to {csv_filename}")
 
     def draw_cascade_face(self, face, frame):
