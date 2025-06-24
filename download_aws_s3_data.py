@@ -1,68 +1,112 @@
-# ===================== 0. Imports & Secrets  =====================
-import boto3, os, pathlib, sys
-from kaggle_secrets import UserSecretsClient
+#!/usr/bin/env python3
+"""
+Download every object under odd-tasks-data/ from the bucket
+bgaze-odd-tasks-data and store them under ./data/…
 
-# Fetch AWS keys from the Kaggle “Secrets” sidebar
-u = UserSecretsClient()
-os.environ["AWS_ACCESS_KEY_ID"]     = u.get_secret("AWS_ACCESS_KEY_ID")
-os.environ["AWS_SECRET_ACCESS_KEY"] = u.get_secret("AWS_SECRET_ACCESS_KEY")
+• Works on Kaggle:   put your keys in the “Secrets” sidebar
+• Works locally:     `aws configure`  OR  `export AWS_ACCESS_KEY_ID=…`
 
-AWS_KEY    = os.environ["AWS_ACCESS_KEY_ID"]
-AWS_SECRET = os.environ["AWS_SECRET_ACCESS_KEY"]
+"""
+from __future__ import annotations
+import boto3, botocore, os, pathlib, sys, textwrap
 
-# ===================== 1. Bucket parameters  =====================
-BUCKET = "bgaze-odd-tasks-data"
-PREFIX = "odd-tasks-data/"          # keep the trailing slash
-LOCAL  = pathlib.Path("./data")     # where to save the files
-REGION = "eu-north-1"               # ← bucket lives in Stockholm
+# ---------------------------------------------------------------------
+# 0. Parameters — edit these if you fork this script
+# ---------------------------------------------------------------------
+BUCKET      = "bgaze-odd-tasks-data"
+PREFIX      = "odd-tasks-data/"          # keep trailing slash
+LOCAL_DIR   = pathlib.Path("./data")
+BUCKET_REGION = "eu-north-1"             # Stockholm
+REQUESTER_PAYS = True                    # <- this bucket is RP
 
-# ===================== 2. Build the S3 clients ===================
-# “Light” client in the correct region
-s3 = boto3.client(
-        "s3",
-        region_name      = REGION,
-        aws_access_key_id     = AWS_KEY,
-        aws_secret_access_key = AWS_SECRET
-)
+# ---------------------------------------------------------------------
+# 1. Get AWS credentials (Kaggle Secrets  ➜  env vars  ➜  ~/.aws/…)
+# ---------------------------------------------------------------------
+def fetch_keys_from_kaggle() -> tuple[str | None, str | None]:
+    """
+    Safely try Kaggle's UserSecretsClient. Return (None, None)
+    if we are NOT on Kaggle or no secrets exist.
+    """
+    try:
+        from kaggle_secrets import UserSecretsClient
+        u = UserSecretsClient()
+        return u.get_secret("AWS_ACCESS_KEY_ID"), u.get_secret("AWS_SECRET_ACCESS_KEY")
+    except Exception:
+        return (None, None)
 
-# Optional: check if bucket is Requester-Pays
-EXTRA_ARGS = None
-try:
-    payer_flag = s3.get_bucket_request_payment(Bucket=BUCKET)["Payer"]
-    if payer_flag == "Requester":
-        EXTRA_ARGS = {"RequestPayer": "requester"}
-        print("Bucket is Requester-Pays – will send RequestPayer=requester.")
-except s3.exceptions.ClientError as e:
-    # Lack of permission ➜ just continue without the header
-    print("Could not query RequestPayment (likely not allowed) – continuing without it.")
+AWS_KEY, AWS_SECRET = fetch_keys_from_kaggle()
+AWS_KEY    = AWS_KEY    or os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET = AWS_SECRET or os.getenv("AWS_SECRET_ACCESS_KEY")
 
-# Helper wrapper so we can call the same way in the loop
-def download(bucket, key, dest):
-    if EXTRA_ARGS:
-        s3.download_file(bucket, key, str(dest), ExtraArgs=EXTRA_ARGS)
-    else:
-        s3.download_file(bucket, key, str(dest))
+# ---------------------------------------------------------------------
+# 2. Build the S3 client in the correct region
+# ---------------------------------------------------------------------
+session = boto3.session.Session()
+if AWS_KEY and AWS_SECRET:
+    s3 = session.client("s3",
+                        region_name=BUCKET_REGION,
+                        aws_access_key_id=AWS_KEY,
+                        aws_secret_access_key=AWS_SECRET)
+else:
+    # Fall back to profile / IAM role
+    s3 = session.client("s3", region_name=BUCKET_REGION)
 
-# ===================== 3. Download loop ==========================
-LOCAL.mkdir(exist_ok=True)
-paginator = s3.get_paginator("list_objects_v2")
+# Extra header for Requester-Pays buckets
+EXTRA = {"RequestPayer": "requester"} if REQUESTER_PAYS else None
 
-n_files = 0
-for page in paginator.paginate(Bucket=BUCKET, Prefix=PREFIX):
-    for obj in page.get("Contents", []):
-        key = obj["Key"]
+def dl(bucket: str, key: str, dest: pathlib.Path):
+    """
+    One wrapper around download_file so every request carries
+    RequestPayer=requester. Retries once if we forgot the header.
+    """
+    try:
+        s3.download_file(bucket, key, str(dest), ExtraArgs=EXTRA or {})
+    except botocore.exceptions.ClientError as e:
+        if (e.response["Error"]["Code"] in ("403", "AccessDenied")) and not EXTRA:
+            # Retry with RequestPayer — should never happen in this script
+            s3.download_file(bucket, key, str(dest),
+                             ExtraArgs={"RequestPayer": "requester"})
+        else:
+            raise
 
-        # Skip pseudo-folders
-        if key.endswith("/"):
-            continue
+# ---------------------------------------------------------------------
+# 3. Download loop
+# ---------------------------------------------------------------------
+def main() -> None:
+    LOCAL_DIR.mkdir(exist_ok=True)
 
-        # Build local path
-        rel  = pathlib.Path(key).relative_to(PREFIX)
-        dest = LOCAL / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
+    paginator = s3.get_paginator("list_objects_v2")
+    n = 0
 
-        print(f"📥  {key}  →  {dest}")
-        download(BUCKET, key, dest)
-        n_files += 1
+    for page in paginator.paginate(Bucket=BUCKET, Prefix=PREFIX):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if key.endswith("/"):              # skip 'folder' placeholders
+                continue
 
-print(f"\n✅  All done – downloaded {n_files} objects.")
+            rel  = pathlib.Path(key).relative_to(PREFIX)
+            dest = LOCAL_DIR / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+
+            print(f"📥  {key}  →  {dest}")
+            dl(BUCKET, key, dest)
+            n += 1
+
+    print(f"\n✅  Finished – downloaded {n} object(s).")
+
+# ---------------------------------------------------------------------
+# 4. CLI entry-point
+# ---------------------------------------------------------------------
+if __name__ == "__main__":
+    try:
+        main()
+    except botocore.exceptions.NoCredentialsError:
+        sys.exit(
+            textwrap.dedent("""
+            ❌  No AWS credentials found.
+
+            • Kaggle:  add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+                       in the “Secrets” sidebar.
+            • Local :  run `aws configure`  OR  export the two env-vars.
+            """).strip()
+        )
