@@ -1,21 +1,27 @@
 import boto3
 import os
 
-# Optional: Load .env for local dev (ignored in Kaggle)
+# ✅ Get secrets using Kaggle's method
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+    from kaggle_secrets import UserSecretsClient
+    user_secrets = UserSecretsClient()
+    AWS_ACCESS_KEY = user_secrets.get_secret("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_KEY = user_secrets.get_secret("AWS_SECRET_ACCESS_KEY")
+except:
+    # Fallback for local dev using .env
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+        AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    except ImportError:
+        AWS_ACCESS_KEY = AWS_SECRET_KEY = None
 
-# Retrieve AWS credentials from environment (Kaggle Secrets or .env)
-AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-
+# Validate credentials
 if not AWS_ACCESS_KEY or not AWS_SECRET_KEY:
-    raise EnvironmentError("AWS credentials not found in environment variables.")
+    raise EnvironmentError("AWS credentials not found.")
 
-# Initialize S3 client with credentials
+# Initialize S3 client
 s3 = boto3.client(
     's3',
     aws_access_key_id=AWS_ACCESS_KEY,
@@ -35,7 +41,7 @@ for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
         for obj in page['Contents']:
             key = obj['Key']
             if key.endswith('/'):
-                continue  # Skip folders
+                continue
             relative_path = os.path.relpath(key, prefix)
             local_file_path = os.path.join(local_dir, relative_path)
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
