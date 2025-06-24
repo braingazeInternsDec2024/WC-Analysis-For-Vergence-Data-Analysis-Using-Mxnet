@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-"""
-Download every object under odd-tasks-data/ from the bucket
-bgaze-odd-tasks-data and store them under ./data/…
-
-• Works on Kaggle:   put your keys in the “Secrets” sidebar
-• Works locally:     `aws configure`  OR  `export AWS_ACCESS_KEY_ID=…`
-
-"""
-from __future__ import annotations
 import boto3, botocore, os, pathlib, sys, textwrap
 
 # ---------------------------------------------------------------------
@@ -60,10 +50,13 @@ def dl(bucket: str, key: str, dest: pathlib.Path):
     RequestPayer=requester. Retries once if we forgot the header.
     """
     try:
+        print(f"Downloading {key} to {dest} with extra args: {EXTRA}")
         s3.download_file(bucket, key, str(dest), ExtraArgs=EXTRA or {})
     except botocore.exceptions.ClientError as e:
+        print(f"Error downloading {key}: {e}")
         if (e.response["Error"]["Code"] in ("403", "AccessDenied")) and not EXTRA:
             # Retry with RequestPayer — should never happen in this script
+            print(f"Retrying download of {key} with RequestPayer header")
             s3.download_file(bucket, key, str(dest),
                              ExtraArgs={"RequestPayer": "requester"})
         else:
