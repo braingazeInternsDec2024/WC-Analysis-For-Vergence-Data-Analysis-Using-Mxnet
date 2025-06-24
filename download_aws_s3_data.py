@@ -1,14 +1,31 @@
 import boto3
 import os
 
-# Initialize S3 client
-s3 = boto3.client('s3')
+# Optional: Load .env for local dev (ignored in Kaggle)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Retrieve AWS credentials from environment (Kaggle Secrets or .env)
+AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+
+if not AWS_ACCESS_KEY or not AWS_SECRET_KEY:
+    raise EnvironmentError("AWS credentials not found in environment variables.")
+
+# Initialize S3 client with credentials
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY
+)
 
 bucket_name = 'bgaze-odd-tasks-data'
-prefix = 'odd-tasks-data/'  
+prefix = 'odd-tasks-data/'
 
 local_dir = './data'
-
 os.makedirs(local_dir, exist_ok=True)
 
 # List and download all files under the prefix
@@ -18,7 +35,7 @@ for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
         for obj in page['Contents']:
             key = obj['Key']
             if key.endswith('/'):
-                continue
+                continue  # Skip folders
             relative_path = os.path.relpath(key, prefix)
             local_file_path = os.path.join(local_dir, relative_path)
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
