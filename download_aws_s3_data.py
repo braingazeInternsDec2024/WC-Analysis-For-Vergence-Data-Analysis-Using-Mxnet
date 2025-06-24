@@ -1,22 +1,14 @@
 import boto3, botocore, os, pathlib, sys, textwrap
 
-# ---------------------------------------------------------------------
-# 0. Parameters — edit these if you fork this script
-# ---------------------------------------------------------------------
+# Parameters
 BUCKET      = "bgaze-odd-tasks-data"
 PREFIX      = "odd-tasks-data/"          # keep trailing slash
 LOCAL_DIR   = pathlib.Path("./data")
 BUCKET_REGION = "eu-north-1"             # Stockholm
 REQUESTER_PAYS = True                    # <- this bucket is RP
 
-# ---------------------------------------------------------------------
-# 1. Get AWS credentials (Kaggle Secrets  ➜  env vars  ➜  ~/.aws/…)
-# ---------------------------------------------------------------------
+# Fetch AWS credentials
 def fetch_keys_from_kaggle() -> tuple[str | None, str | None]:
-    """
-    Safely try Kaggle's UserSecretsClient. Return (None, None)
-    if we are NOT on Kaggle or no secrets exist.
-    """
     try:
         from kaggle_secrets import UserSecretsClient
         u = UserSecretsClient()
@@ -28,9 +20,7 @@ AWS_KEY, AWS_SECRET = fetch_keys_from_kaggle()
 AWS_KEY    = AWS_KEY    or os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET = AWS_SECRET or os.getenv("AWS_SECRET_ACCESS_KEY")
 
-# ---------------------------------------------------------------------
-# 2. Build the S3 client in the correct region
-# ---------------------------------------------------------------------
+# Build the S3 client
 session = boto3.session.Session()
 if AWS_KEY and AWS_SECRET:
     s3 = session.client("s3",
@@ -38,33 +28,24 @@ if AWS_KEY and AWS_SECRET:
                         aws_access_key_id=AWS_KEY,
                         aws_secret_access_key=AWS_SECRET)
 else:
-    # Fall back to profile / IAM role
     s3 = session.client("s3", region_name=BUCKET_REGION)
 
 # Extra header for Requester-Pays buckets
 EXTRA = {"RequestPayer": "requester"} if REQUESTER_PAYS else None
 
 def dl(bucket: str, key: str, dest: pathlib.Path):
-    """
-    One wrapper around download_file so every request carries
-    RequestPayer=requester. Retries once if we forgot the header.
-    """
     try:
         print(f"Downloading {key} to {dest} with extra args: {EXTRA}")
         s3.download_file(bucket, key, str(dest), ExtraArgs=EXTRA or {})
     except botocore.exceptions.ClientError as e:
         print(f"Error downloading {key}: {e}")
         if (e.response["Error"]["Code"] in ("403", "AccessDenied")) and not EXTRA:
-            # Retry with RequestPayer — should never happen in this script
             print(f"Retrying download of {key} with RequestPayer header")
             s3.download_file(bucket, key, str(dest),
                              ExtraArgs={"RequestPayer": "requester"})
         else:
             raise
 
-# ---------------------------------------------------------------------
-# 3. Download loop
-# ---------------------------------------------------------------------
 def main() -> None:
     LOCAL_DIR.mkdir(exist_ok=True)
 
@@ -74,7 +55,7 @@ def main() -> None:
     for page in paginator.paginate(Bucket=BUCKET, Prefix=PREFIX):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            if key.endswith("/"):              # skip 'folder' placeholders
+            if key.endswith("/"):  # skip 'folder' placeholders
                 continue
 
             rel  = pathlib.Path(key).relative_to(PREFIX)
@@ -87,9 +68,6 @@ def main() -> None:
 
     print(f"\n✅  Finished – downloaded {n} object(s).")
 
-# ---------------------------------------------------------------------
-# 4. CLI entry-point
-# ---------------------------------------------------------------------
 if __name__ == "__main__":
     try:
         main()
