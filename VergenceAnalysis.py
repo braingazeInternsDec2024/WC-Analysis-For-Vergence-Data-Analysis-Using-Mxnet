@@ -69,7 +69,8 @@ class VergenceCalculator:
 
     def process_videos(self):
         print("Starting video processing...")
-        gpu_ctx = -1
+        # Change from -1 to 'cpu' to specify CPU processing
+        gpu_ctx = 'cpu'
         # Fix: Use 'device' parameter instead of 'gpu'
         fd = FaceDetectionModel("weights/16and32", scale=0, thd=0.6, device=gpu_ctx)
         fa = CoordinateAlignmentModel("weights/2d106det", device=gpu_ctx)
