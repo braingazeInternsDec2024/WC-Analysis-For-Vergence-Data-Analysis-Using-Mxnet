@@ -71,12 +71,11 @@ class VergenceCalculator:
         print("Starting video processing...")
         # Change from -1 to 'cpu' to specify CPU processing
         gpu_ctx = 'cpu'
-        # Fix: Use 'device' parameter instead of 'gpu'
-        fd = FaceDetectionModel("weights/16and32", scale=0, thd=0.6, device=gpu_ctx)
-        fa = CoordinateAlignmentModel("weights/2d106det", device=gpu_ctx)
-        gs = IrisLocalizationModel("weights/iris_landmark.tflite")
+        fd = FaceDetectionModel(os.path.join(SCRIPT_DIR, "weights/16and32"), scale=0, thd=0.6, device=gpu_ctx)
+        fa = CoordinateAlignmentModel(os.path.join(SCRIPT_DIR, "weights/2d106det"), device=gpu_ctx)
+        gs = IrisLocalizationModel(os.path.join(SCRIPT_DIR, "weights/iris_landmark.tflite"))
 
-        cascade_path = "haarcascade_eye.xml"
+        cascade_path = os.path.join(SCRIPT_DIR, "haarcascade_eye.xml")
         eye_haarcascade = cv2.CascadeClassifier(cascade_path)
 
         df_vergence_calc = pd.DataFrame(
