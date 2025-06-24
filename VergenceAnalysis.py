@@ -70,8 +70,9 @@ class VergenceCalculator:
     def process_videos(self):
         print("Starting video processing...")
         gpu_ctx = -1
-        fd = FaceDetectionModel("weights/16and32", 0, 0.6, gpu=gpu_ctx)
-        fa = CoordinateAlignmentModel("weights/2d106det", 0, gpu=gpu_ctx)
+        # Fix: Use 'device' parameter instead of 'gpu'
+        fd = FaceDetectionModel("weights/16and32", scale=0, thd=0.6, device=gpu_ctx)
+        fa = CoordinateAlignmentModel("weights/2d106det", device=gpu_ctx)
         gs = IrisLocalizationModel("weights/iris_landmark.tflite")
 
         cascade_path = "haarcascade_eye.xml"
