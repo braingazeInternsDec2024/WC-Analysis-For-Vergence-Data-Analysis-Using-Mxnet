@@ -10,8 +10,6 @@ import numpy as np
 from BRAINGAZE_class import *
 
 from VergenceAnalysis import VergenceCalculator
-from vergence_plotter_induvidual import plot_all_csv_in_dir
-
 
 def main(path2logs):
 
@@ -28,10 +26,11 @@ def main(path2logs):
 
 
 if __name__ == "__main__":
+    # Default path is "data"
     path2logs = "data"
+    
+    if len(sys.argv) > 1:
+        path2logs = sys.argv[1]
+    
     print("path2logs= ", path2logs)
-    # print('path2logs= ', path2logs)
     main(path2logs)
-
-
-
