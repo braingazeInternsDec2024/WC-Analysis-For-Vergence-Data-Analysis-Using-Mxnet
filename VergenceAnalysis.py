@@ -180,7 +180,7 @@ class VergenceCalculator:
                         )
 
                         # Define frame size for head pose framework:
-                        hp = HeadPoseEstimator("weights/object_points.npy", width, height)
+                        hp = HeadPoseEstimator(os.path.join(SCRIPT_DIR, "weights/object_points.npy"), width, height)
 
                         while cap.isOpened():
                             ret, frame = cap.read()
