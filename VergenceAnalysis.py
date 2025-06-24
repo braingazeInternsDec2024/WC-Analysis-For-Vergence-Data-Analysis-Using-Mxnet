@@ -21,14 +21,17 @@ from service.iris_localization import IrisLocalizationModel
 
 import subprocess
 
+# Get the directory where the script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Initialize device
 torch.backends.cudnn.enabled = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# Load models and assets
-face_cascade = cv2.CascadeClassifier("lbpcascade_frontalface_improved.xml")
-landmarks_detector = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-checkpoint = torch.load("checkpoint.pt", map_location=device)
+# Load models and assets with absolute paths
+face_cascade = cv2.CascadeClassifier(os.path.join(SCRIPT_DIR, "lbpcascade_frontalface_improved.xml"))
+landmarks_detector = dlib.shape_predictor(os.path.join(SCRIPT_DIR, "shape_predictor_68_face_landmarks.dat"))
+checkpoint = torch.load(os.path.join(SCRIPT_DIR, "checkpoint.pt"), map_location=device)
 eyenet = EyeNet(
     nstack=checkpoint["nstack"],
     nfeatures=checkpoint["nfeatures"],
