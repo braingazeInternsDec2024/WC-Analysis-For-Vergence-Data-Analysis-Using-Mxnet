@@ -16,7 +16,7 @@ from help_functions import *
 
 from service.head_pose import HeadPoseEstimator
 from service.face_alignment import CoordinateAlignmentModel
-from service.face_detector import MxnetDetectionModel
+from service.face_detector import FaceDetectionModel  
 from service.iris_localization import IrisLocalizationModel
 
 import subprocess
@@ -64,7 +64,7 @@ class VergenceCalculator:
     def process_videos(self):
         print("Starting video processing...")
         gpu_ctx = -1
-        fd = MxnetDetectionModel("weights/16and32", 0, 0.6, gpu=gpu_ctx)
+        fd = FaceDetectionModel("weights/16and32", 0, 0.6, gpu=gpu_ctx)
         fa = CoordinateAlignmentModel("weights/2d106det", 0, gpu=gpu_ctx)
         gs = IrisLocalizationModel("weights/iris_landmark.tflite")
 

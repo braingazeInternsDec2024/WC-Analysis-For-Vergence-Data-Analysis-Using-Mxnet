@@ -21,7 +21,8 @@ from scipy.signal import savgol_filter, medfilt
 import matplotlib.pyplot as plt
 from service.head_pose import HeadPoseEstimator
 from service.face_alignment import CoordinateAlignmentModel
-from service.face_detector import MxnetDetectionModel
+# Update the import at the top of the file
+from service.face_detector import FaceDetectionModel  
 from service.iris_localization import IrisLocalizationModel
 import time
 from queue import Queue
@@ -66,7 +67,7 @@ class BG:
 
         # Define DL models to use:
         gpu_ctx = -1
-        fd = MxnetDetectionModel("weights/16and32", 0, 0.6, gpu=gpu_ctx)
+        fd = FaceDetectionModel("weights/16and32", 0, 0.6, gpu=gpu_ctx)
         fa = CoordinateAlignmentModel("weights/2d106det", 0, gpu=gpu_ctx)
         gs = IrisLocalizationModel("weights/iris_landmark.tflite")
 

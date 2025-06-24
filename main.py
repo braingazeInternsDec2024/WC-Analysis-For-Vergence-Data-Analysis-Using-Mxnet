@@ -5,6 +5,8 @@ This script usese BrainGaze class wrapper to process 3 log files given by wctest
 """
 
 import sys
+import numpy as np
+
 from BRAINGAZE_class import *
 
 from VergenceAnalysis import VergenceCalculator
@@ -26,8 +28,10 @@ def main(path2logs):
 
 
 if __name__ == "__main__":
-    # main(sys.argv[1])
     path2logs = "data"
     print("path2logs= ", path2logs)
     # print('path2logs= ', path2logs)
     main(path2logs)
+
+
+

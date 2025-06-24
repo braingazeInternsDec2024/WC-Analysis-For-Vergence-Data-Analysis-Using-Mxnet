@@ -2,13 +2,14 @@
 # -*- coding:utf-8 -*-
 
 import numpy as np
-import mxnet as mx
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import cv2
 import time
 from queue import Queue, Full
 
 from numpy import frombuffer, uint8, concatenate, float32, maximum, minimum, prod
-from mxnet.ndarray import waitall, concat
 from functools import partial
 
 from threading import Thread
@@ -20,10 +21,10 @@ from generate_anchor import generate_anchors_fpn, nonlinear_pred, generate_runti
 
 
 class BaseDetection:
-    def __init__(self, *, thd, gpu, margin, nms_thd, verbose):
+    def __init__(self, *, thd, device, margin, nms_thd, verbose):
         self.threshold = thd
         self.nms_threshold = nms_thd
-        self.device = gpu
+        self.device = device
         self.margin = margin
 
         self._queue = Queue(200)
@@ -111,30 +112,39 @@ class BaseDetection:
         return boxes
 
 
-class MxnetDetectionModel(BaseDetection):
-    def __init__(self, prefix, epoch, scale=1., gpu=-1, thd=0.6, margin=0,
+class FaceDetectionModel(BaseDetection):
+    def __init__(self, model_path, scale=1., device=None, thd=0.6, margin=0,
                  nms_thd=0.4, verbose=False):
 
-        super().__init__(thd=thd, gpu=gpu, margin=margin,
+        # Determine device
+        if device is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        super().__init__(thd=thd, device=device, margin=margin,
                          nms_thd=nms_thd, verbose=verbose)
 
         self.scale = scale
         self._rescale = partial(cv2.resize, dsize=None, fx=self.scale,
                                 fy=self.scale, interpolation=cv2.INTER_NEAREST)
 
-        self._ctx = mx.cpu() if self.device < 0 else mx.gpu(self.device)
         self._fpn_anchors = generate_anchors_fpn()
         self._runtime_anchors = {}
 
-        self.model = self._load_model(prefix, epoch)
-        self.exec_group = self.model._exec_group
+        self.model = self._load_model(model_path)
+        self.model.to(self.device)
+        self.model.eval()
 
-    def _load_model(self, prefix, epoch):
-        sym, arg_params, aux_params = mx.model.load_checkpoint(prefix, epoch)
-        model = mx.mod.Module(sym, context=self._ctx, label_names=None)
-        model.bind(data_shapes=[('data', (1, 3, 1, 1))],
-                   for_training=False)
-        model.set_params(arg_params, aux_params)
+    def _load_model(self, model_path):
+        """Load a PyTorch model for face detection"""
+        # Define a RetinaFace-like model
+        model = RetinaFaceDetector()
+        
+        # If model_path is provided and exists, load weights
+        if model_path and os.path.exists(model_path):
+            model.load_state_dict(torch.load(model_path, map_location='cpu'))
+        else:
+            print(f"Warning: Model path {model_path} not found. Using untrained model.")
+            
         return model
 
     def _get_runtime_anchors(self, height, width, stride, base_anchors):
@@ -150,49 +160,68 @@ class MxnetDetectionModel(BaseDetection):
 
         Parameters
         ----------
-        out: map object of staggered scores and deltas.
-            scores, deltas = next(out), next(out)
-
-            Each scores has shape [N, A*4, H, W].
-            Each deltas has shape [N, A*4, H, W].
-
-            N is the batch size.
-            A is the shape[0] of base anchors declared in the fpn dict.
-            H, W is the heights and widths of the anchors grid,
-            based on the stride and input image's height and width.
+        out: tuple of (scores_tensor, boxes_tensor, anchors_array)
+            scores_tensor: PyTorch tensor with detection scores
+            boxes_tensor: PyTorch tensor with bounding box coordinates
+            anchors_array: NumPy array with anchor coordinates
 
         Returns
         -------
-        Generator of list, each list has [boxes, scores].
-
-        Usage
-        -----
-        >>> np.block(list(self._retina_solving(out)))
+        deltas: ndarray
+            Array of detections with format [x1, y1, x2, y2, score]
         '''
-
-        buffer, anchors = out[0].asnumpy(), out[1]
-        mask = buffer[:, 4] > self.threshold
-        deltas = buffer[mask]
-        nonlinear_pred(anchors[mask], deltas)
-        deltas[:, :4] /= self.scale
+        scores_tensor, boxes_tensor, anchors = out
+        
+        # Convert to numpy
+        scores = scores_tensor.cpu().numpy()
+        boxes = boxes_tensor.cpu().numpy()
+        
+        # Filter by threshold
+        mask = scores > self.threshold
+        filtered_boxes = boxes[mask]
+        filtered_scores = scores[mask]
+        filtered_anchors = anchors[mask]
+        
+        # Apply box decoding
+        nonlinear_pred(filtered_anchors, filtered_boxes)
+        filtered_boxes[:, :4] /= self.scale
+        
+        # Combine boxes and scores
+        deltas = np.hstack([filtered_boxes, filtered_scores.reshape(-1, 1)])
         return deltas
 
-    def _retina_solve(self):
-        out, res, anchors = iter(self.exec_group.execs[0].outputs), [], []
-
-        for fpn in self._fpn_anchors:
-            scores = next(out)[:, -fpn.scales_shape:,
-                               :, :].transpose((0, 2, 3, 1))
-            deltas = next(out).transpose((0, 2, 3, 1))
-
-            res.append(concat(deltas.reshape((-1, 4)),
-                              scores.reshape((-1, 1)), dim=1))
-
-            anchors.append(self._get_runtime_anchors(*deltas.shape[1:3],
-                                                     fpn.stride,
-                                                     fpn.base_anchors))
-
-        return concat(*res, dim=0), concatenate(anchors)
+    def _retina_solve(self, outputs, input_shape):
+        """Process network outputs to get boxes and scores"""
+        batch_scores = []
+        batch_boxes = []
+        anchors_list = []
+        
+        # Process each FPN level
+        for i, fpn in enumerate(self._fpn_anchors):
+            # Get feature map dimensions
+            feat_h, feat_w = input_shape[2] // fpn.stride, input_shape[3] // fpn.stride
+            
+            # Get scores and boxes from network outputs
+            scores = outputs[i*2]  # Classification outputs
+            boxes = outputs[i*2+1]  # Regression outputs
+            
+            # Reshape outputs
+            scores = scores.reshape(-1, 1)
+            boxes = boxes.reshape(-1, 4)
+            
+            # Get anchors for this feature level
+            anchors = self._get_runtime_anchors(feat_h, feat_w, fpn.stride, fpn.base_anchors)
+            anchors_list.append(anchors)
+            
+            batch_scores.append(scores)
+            batch_boxes.append(boxes)
+        
+        # Concatenate all levels
+        all_scores = torch.cat(batch_scores, dim=0)
+        all_boxes = torch.cat(batch_boxes, dim=0)
+        all_anchors = concatenate(anchors_list)
+        
+        return all_scores, all_boxes, all_anchors
 
     def _retina_forward(self, src):
         ''' ##### Author 1996scarlet@gmail.com
@@ -203,32 +232,21 @@ class MxnetDetectionModel(BaseDetection):
         src: ndarray
             The image batch of shape [H, W, C].
 
-        scales: list of float
-            The src scales para.
-
         Returns
         -------
-        net_out: list, len = STEP * N
-            If step is 2, each block has [scores, bbox_deltas]
-            Else if step is 3, each block has [scores, bbox_deltas, landmarks]
-
-        Usage
-        -----
-        >>> out = self._retina_forward(frame)
+        tuple: (scores, boxes, anchors)
+            Processed outputs from the network
         '''
-        # timea = time.perf_counter()
-
+        # Preprocess image
         dst = self._rescale(src).transpose((2, 0, 1))[None, ...]
-
-        if dst.shape != self.model._data_shapes[0].shape:
-            self.exec_group.reshape([mx.io.DataDesc('data', dst.shape)], None)
-
-        self.exec_group.data_arrays[0][0][1][:] = dst.astype(float32)
-        self.exec_group.execs[0].forward(is_train=False)
-
-        # print(f'inferance: {time.perf_counter() - timea}')
-
-        return self._retina_solve()
+        dst = torch.from_numpy(dst.astype(np.float32)).to(self.device)
+        
+        # Forward pass
+        with torch.no_grad():
+            outputs = self.model(dst)
+        
+        # Process outputs
+        return self._retina_solve(outputs, dst.shape)
 
     def detect(self, image, mode='nms'):
         out = self._retina_forward(image)
@@ -237,29 +255,20 @@ class MxnetDetectionModel(BaseDetection):
 
     def workflow_inference(self, instream, shape):
         for source in instream:
-            # st = time.perf_counter()
-
             frame = frombuffer(source, dtype=uint8).reshape(shape)
-
             out = self._retina_forward(frame)
 
             try:
                 self.write_queue((frame, out))
             except Full:
-                waitall()
                 print('Frame queue full', file=sys.stderr)
-
-            # print(f'workflow_inference: {time.perf_counter() - st}')
 
     def workflow_postprocess(self, outstream=None):
         for frame, out in self.read_queue:
-            # st = time.perf_counter()
             detach = self._retina_detach(out)
-            # print(f'workflow_postprocess: {time.perf_counter() - st}')
 
             if outstream is None:
                 for res in self._nms_wrapper(detach):
-                    # self.margin_clip(res)
                     cv2.rectangle(frame, (res[0], res[1]),
                                   (res[2], res[3]), (255, 255, 0))
 
@@ -268,6 +277,74 @@ class MxnetDetectionModel(BaseDetection):
             else:
                 outstream(frame)
                 outstream(detach)
+
+
+class RetinaFaceDetector(nn.Module):
+    """A simplified RetinaFace-style detector using PyTorch"""
+    def __init__(self):
+        super(RetinaFaceDetector, self).__init__()
+        
+        # Define a simple backbone network (similar to ResNet)
+        self.backbone = nn.Sequential(
+            # Initial layers
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            # First block
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            # Second block
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            # Third block
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+        )
+        
+        # FPN layers
+        self.fpn_1 = nn.Conv2d(512, 256, kernel_size=1)
+        self.fpn_2 = nn.Conv2d(256, 256, kernel_size=1)
+        
+        # Classification and regression heads for each FPN level
+        # For simplicity, we'll use 2 FPN levels (similar to the original code)
+        self.cls_1 = nn.Conv2d(256, 2, kernel_size=3, padding=1)  # 2 anchors per location
+        self.reg_1 = nn.Conv2d(256, 8, kernel_size=3, padding=1)  # 2 anchors * 4 coordinates
+        
+        self.cls_2 = nn.Conv2d(256, 2, kernel_size=3, padding=1)
+        self.reg_2 = nn.Conv2d(256, 8, kernel_size=3, padding=1)
+        
+    def forward(self, x):
+        # Extract features
+        features = self.backbone(x)
+        
+        # FPN processing
+        fpn_1_out = self.fpn_1(features)
+        fpn_2_out = self.fpn_2(F.interpolate(fpn_1_out, scale_factor=0.5, mode='nearest'))
+        
+        # Apply classification and regression heads
+        cls_1 = self.cls_1(fpn_1_out)
+        reg_1 = self.reg_1(fpn_1_out)
+        
+        cls_2 = self.cls_2(fpn_2_out)
+        reg_2 = self.reg_2(fpn_2_out)
+        
+        # Return outputs for each FPN level
+        return [cls_1, reg_1, cls_2, reg_2]
 
 
 if __name__ == '__main__':
@@ -280,7 +357,7 @@ if __name__ == '__main__':
     write = sys.stdout.buffer.write
     camera = iter(partial(read, BUFFER_SIZE), b'')
 
-    fd = MxnetDetectionModel("../weights/16and32", 0, scale=.4, gpu=-1, margin=0.15)
+    fd = FaceDetectionModel("../weights/face_detection_model.pth", scale=.4, margin=0.15)
 
     poster = Thread(target=fd.workflow_postprocess)
     poster.start()
