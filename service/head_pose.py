@@ -115,7 +115,8 @@ def main(filename):
 
     cap = cv2.VideoCapture(filename)
 
-    fd = FaceDetectionModel("../weights/16and32", 0, scale=.6, gpu=-1)
+
+    fd = MxnetDetectionModel("../weights/16and32", 0, scale=.6, gpu=-1)
     fa = CoordinateAlignmentModel('../weights/2d106det', 0)
     hp = HeadPoseEstimator("../weights/object_points.npy", cap.get(3), cap.get(4))
 
@@ -150,7 +151,7 @@ def main(filename):
 
 
 if __name__ == '__main__':
-    from face_detector import FaceDetectionModel 
+    from face_detector import MxnetDetectionModel
     from face_alignment import CoordinateAlignmentModel
     import os
     

@@ -5,9 +5,7 @@ import numpy as np
 import cv2
 import time
 import collections
-import torch
-import torch.nn as nn
-import os
+import mxnet as mx
 
 
 pred_type = collections.namedtuple('prediction', ['slice', 'close', 'color'])
@@ -23,31 +21,21 @@ pred_types = {'face': pred_type(slice(0, 17), False, (173.91, 198.9, 231.795, 0.
 
 
 class BaseAlignmentorModel:
-    def __init__(self, model_path, shape, device=None, verbose=False):
-        # Determine device
-        if device is None:
-            self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        else:
-            self.device = device
+    def __init__(self, prefix, epoch, shape, gpu=-1, verbose=False):
+        self._device = gpu
+        self._ctx = mx.cpu() if self._device < 0 else mx.gpu(self._device)
 
-        self.model = self._load_model(model_path, shape)
-        self.model.to(self.device)
-        self.model.eval()
+        self.model = self._load_model(prefix, epoch, shape)
+        self.exec_group = self.model._exec_group
 
         self.input_shape = shape[-2:]
         self.pre_landmarks = None
 
-    def _load_model(self, model_path, shape):
-        """Load a PyTorch model for face alignment"""
-        # Define a simple model for face alignment
-        model = FaceAlignmentNet(input_shape=shape)
-        
-        # If model_path is provided and exists, load weights
-        if model_path and os.path.exists(model_path):
-            model.load_state_dict(torch.load(model_path, map_location='cpu'))
-        else:
-            print(f"Warning: Model path {model_path} not found. Using untrained model.")
-            
+    def _load_model(self, prefix, epoch, shape):
+        sym, arg_params, aux_params = mx.model.load_checkpoint(prefix, epoch)
+        model = mx.mod.Module(sym, context=self._ctx, label_names=None)
+        model.bind(data_shapes=[('data', shape)], for_training=False)
+        model.set_params(arg_params, aux_params)
         return model
 
     @staticmethod
@@ -62,9 +50,9 @@ class BaseAlignmentorModel:
 
 
 class CoordinateAlignmentModel(BaseAlignmentorModel):
-    def __init__(self, model_path, device=None, verbose=False):
+    def __init__(self, prefix, epoch, gpu=-1, verbose=False):
         shape = (1, 3, 192, 192)
-        super().__init__(model_path, shape, device, verbose)
+        super().__init__(prefix, epoch, shape, gpu, verbose)
         self.trans_distance = self.input_shape[-1] >> 1
         self.marker_nums = 106
         self.eye_bound = ([35, 41, 40, 42, 39, 37, 33, 36],
@@ -81,25 +69,25 @@ class CoordinateAlignmentModel(BaseAlignmentorModel):
         corpped = cv2.warpAffine(img, M, self.input_shape, borderValue=0.0)
         inp = corpped[..., ::-1].transpose(2, 0, 1)[None, ...]
 
-        # Convert to PyTorch tensor
-        inp_tensor = torch.from_numpy(inp).float().to(self.device)
-        return inp_tensor, M
+        return mx.nd.array(inp), M
 
     def _inference(self, x):
-        with torch.no_grad():
-            output = self.model(x)
-        return output
+        self.exec_group.data_arrays[0][0][1][:] = x.astype(np.float32)
+        self.exec_group.execs[0].forward(is_train=False)
+        return self.exec_group.execs[0].outputs[-1][-1]
 
     def _postprocess(self, out, M):
         iM = cv2.invertAffineTransform(M)
         col = np.ones((self.marker_nums, 1))
 
-        # Convert PyTorch tensor to numpy
-        pred = out.cpu().numpy().reshape((self.marker_nums, 2))
+        out = out.reshape((self.marker_nums, 2))
+
+        pred = out.asnumpy()
         pred += 1
         pred *= self.trans_distance
 
         # add a column
+        # pred = np.c_[pred, np.ones((pred.shape[0], 1))]
         pred = np.concatenate((pred, col), axis=1)
         
         return pred @ iM.T  # dot product
@@ -136,77 +124,16 @@ class CoordinateAlignmentModel(BaseAlignmentorModel):
             yield self._calibrate(pred, .8) if calibrate else pred
 
 
-class FaceAlignmentNet(nn.Module):
-    """A simple CNN for face landmark detection"""
-    def __init__(self, input_shape=(1, 3, 192, 192)):
-        super(FaceAlignmentNet, self).__init__()
-        
-        # Define a simple CNN architecture
-        self.features = nn.Sequential(
-            # Initial convolution
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            
-            # First block
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            
-            # Second block
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            
-            # Third block
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
-            
-            # Fourth block
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
-        )
-        
-        # Calculate the size of the feature maps after convolutions
-        h, w = input_shape[2] // 16, input_shape[3] // 16  # After 4 max pooling layers
-        
-        # Regression head for landmarks
-        self.regressor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(512 * h * w, 1024),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Linear(1024, 106 * 2)  # 106 landmarks with x,y coordinates
-        )
-        
-    def forward(self, x):
-        x = self.features(x)
-        landmarks = self.regressor(x)
-        return landmarks.view(-1, 106, 2)  # Reshape to [batch_size, 106, 2]
-
-
 if __name__ == '__main__':
 
-    from face_detector import FaceDetectionModel
+    from face_detector import MxnetDetectionModel
     import sys
     import os
 
     os.chdir(os.path.dirname(__file__))
 
-    fd = FaceDetectionModel("../weights/face_detection_model.pth", scale=.4)
-    fa = CoordinateAlignmentModel('../weights/face_alignment_model.pth')
+    fd = MxnetDetectionModel("../weights/16and32", 0, scale=.4, gpu=-1)
+    fa = CoordinateAlignmentModel('../weights/2d106det', 0)
 
     cap = cv2.VideoCapture(sys.argv[1])
 

@@ -16,25 +16,21 @@ from help_functions import *
 
 from service.head_pose import HeadPoseEstimator
 from service.face_alignment import CoordinateAlignmentModel
-from service.face_detector import FaceDetectionModel  
+from service.face_detector import MxnetDetectionModel
 from service.iris_localization import IrisLocalizationModel
 
 import subprocess
 
-# Get the directory where the script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Initialize device
 torch.backends.cudnn.enabled = True
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# Load models and assets with absolute paths
+# Load models and assets
 face_cascade = cv2.CascadeClassifier(os.path.join(SCRIPT_DIR, "lbpcascade_frontalface_improved.xml"))
 landmarks_detector = dlib.shape_predictor(os.path.join(SCRIPT_DIR, "shape_predictor_68_face_landmarks.dat"))
-
-# Explicitly set weights_only=False to maintain compatibility with PyTorch 2.6+
-checkpoint = torch.load(os.path.join(SCRIPT_DIR, "checkpoint.pt"), map_location=device, weights_only=False)
-
+checkpoint = torch.load(os.path.join(SCRIPT_DIR, "checkpoint.pt"), map_location=device)
 eyenet = EyeNet(
     nstack=checkpoint["nstack"],
     nfeatures=checkpoint["nfeatures"],
@@ -69,10 +65,9 @@ class VergenceCalculator:
 
     def process_videos(self):
         print("Starting video processing...")
-        # Change from -1 to 'cpu' to specify CPU processing
-        gpu_ctx = 'cpu'
-        fd = FaceDetectionModel(os.path.join(SCRIPT_DIR, "weights/16and32-0000.params"), scale=0.4, thd=0.6, device=gpu_ctx)
-        fa = CoordinateAlignmentModel(os.path.join(SCRIPT_DIR, "weights/2d106det-0000.params"), device=gpu_ctx)
+        gpu_ctx = -1
+        fd = MxnetDetectionModel(os.path.join(SCRIPT_DIR, "weights/16and32"), 0, 0.6, gpu=gpu_ctx)
+        fa = CoordinateAlignmentModel(os.path.join(SCRIPT_DIR, "weights/2d106det"), 0, gpu=gpu_ctx)
         gs = IrisLocalizationModel(os.path.join(SCRIPT_DIR, "weights/iris_landmark.tflite"))
 
         cascade_path = os.path.join(SCRIPT_DIR, "haarcascade_eye.xml")
@@ -180,7 +175,7 @@ class VergenceCalculator:
                         )
 
                         # Define frame size for head pose framework:
-                        hp = HeadPoseEstimator(os.path.join(SCRIPT_DIR, "weights/object_points.npy"), width, height)
+                        hp = HeadPoseEstimator(os.path.join(SCRIPT_DIR,"weights/object_points.npy"), width, height)
 
                         while cap.isOpened():
                             ret, frame = cap.read()

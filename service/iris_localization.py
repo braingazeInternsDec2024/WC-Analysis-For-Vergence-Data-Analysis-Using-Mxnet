@@ -91,11 +91,12 @@ class IrisLocalizationModel():
 
 
 
-if __name__ == '__main__':
-    from face_detector import FaceDetectionModel  
-    from face_alignment import CoordinateAlignmentModel
-    from head_pose import HeadPoseEstimator
+if __name__ == "__main__":
     import sys
+    from head_pose import HeadPoseEstimator
+    from face_alignment import CoordinateAlignmentModel
+    from face_detector import MxnetDetectionModel
+
     import os
 
     os.chdir(os.path.dirname(__file__))
@@ -106,7 +107,7 @@ if __name__ == '__main__':
 
     cap = cv2.VideoCapture(video)
 
-    fd = FaceDetectionModel("../weights/16and32", 0, .6, gpu=gpu_ctx)
+    fd = MxnetDetectionModel("../weights/16and32", 0, .6, gpu=gpu_ctx)
     fa = CoordinateAlignmentModel('../weights/2d106det', 0, gpu=gpu_ctx)
     gs = IrisLocalizationModel("../weights/iris_landmark.tflite")
     hp = HeadPoseEstimator("../weights/object_points.npy", cap.get(3), cap.get(4))
