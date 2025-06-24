@@ -176,42 +176,19 @@ class FaceDetectionModel(BaseDetection):
         scores = scores_tensor.cpu().numpy()
         boxes = boxes_tensor.cpu().numpy()
         
-        # Handle dimension mismatch - common with untrained models
-        try:
-            # Check if dimensions match
-            if scores.ndim == 1:
-                scores = scores.reshape(-1, 1)
-            
-            # Create mask and ensure it has the right shape
-            mask = scores > self.threshold
-            
-            # If mask is multi-dimensional, flatten to 1D
-            if mask.ndim > 1:
-                mask = mask.flatten()
-            
-            # Ensure boxes can be indexed with the mask
-            if mask.shape[0] != boxes.shape[0]:
-                print(f"Warning: Mask shape {mask.shape} doesn't match boxes shape {boxes.shape}. Returning empty detections.")
-                return np.array([])
-            
-            filtered_boxes = boxes[mask]
-            filtered_scores = scores[mask]
-            filtered_anchors = anchors[mask]
-            
-            # If we have valid detections
-            if filtered_boxes.size > 0:
-                # Apply box decoding
-                nonlinear_pred(filtered_anchors, filtered_boxes)
-                filtered_boxes[:, :4] /= self.scale
-                
-                # Combine boxes and scores
-                deltas = np.hstack([filtered_boxes, filtered_scores.reshape(-1, 1)])
-                return deltas
-            else:
-                return np.array([])
-        except Exception as e:
-            print(f"Error in face detection: {e}. Returning empty detections.")
-            return np.array([])
+        # Filter by threshold
+        mask = scores > self.threshold
+        filtered_boxes = boxes[mask]
+        filtered_scores = scores[mask]
+        filtered_anchors = anchors[mask]
+        
+        # Apply box decoding
+        nonlinear_pred(filtered_anchors, filtered_boxes)
+        filtered_boxes[:, :4] /= self.scale
+        
+        # Combine boxes and scores
+        deltas = np.hstack([filtered_boxes, filtered_scores.reshape(-1, 1)])
+        return deltas
 
     def _retina_solve(self, outputs, input_shape):
         """Process network outputs to get boxes and scores"""
