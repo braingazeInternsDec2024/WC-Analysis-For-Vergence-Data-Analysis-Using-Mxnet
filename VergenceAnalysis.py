@@ -31,7 +31,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Load models and assets with absolute paths
 face_cascade = cv2.CascadeClassifier(os.path.join(SCRIPT_DIR, "lbpcascade_frontalface_improved.xml"))
 landmarks_detector = dlib.shape_predictor(os.path.join(SCRIPT_DIR, "shape_predictor_68_face_landmarks.dat"))
-checkpoint = torch.load(os.path.join(SCRIPT_DIR, "checkpoint.pt"), map_location=device)
+
+# Explicitly set weights_only=False to maintain compatibility with PyTorch 2.6+
+checkpoint = torch.load(os.path.join(SCRIPT_DIR, "checkpoint.pt"), map_location=device, weights_only=False)
+
 eyenet = EyeNet(
     nstack=checkpoint["nstack"],
     nfeatures=checkpoint["nfeatures"],
