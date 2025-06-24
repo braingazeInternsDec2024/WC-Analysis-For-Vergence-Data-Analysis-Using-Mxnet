@@ -71,7 +71,7 @@ class VergenceCalculator:
         print("Starting video processing...")
         # Change from -1 to 'cpu' to specify CPU processing
         gpu_ctx = 'cpu'
-        fd = FaceDetectionModel(os.path.join(SCRIPT_DIR, "weights/16and32"), scale=0, thd=0.6, device=gpu_ctx)
+        fd = FaceDetectionModel(os.path.join(SCRIPT_DIR, "weights/16and32"), scale=0.4, thd=0.6, device=gpu_ctx)
         fa = CoordinateAlignmentModel(os.path.join(SCRIPT_DIR, "weights/2d106det"), device=gpu_ctx)
         gs = IrisLocalizationModel(os.path.join(SCRIPT_DIR, "weights/iris_landmark.tflite"))
 
