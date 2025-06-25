@@ -288,3 +288,4 @@ if __name__ == '__main__':
     infer = Thread(target=fd.workflow_inference, args=(camera, FRAME_SHAPE,))
     infer.daemon = True
     infer.start()
+
