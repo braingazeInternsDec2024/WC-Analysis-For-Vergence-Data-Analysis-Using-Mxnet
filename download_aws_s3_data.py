@@ -1,5 +1,14 @@
 import boto3, botocore, os, pathlib, sys, textwrap
 
+# Add dotenv import
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from .env file
+    load_dotenv()
+    ENV_FILE_LOADED = True
+except ImportError:
+    ENV_FILE_LOADED = False
+
 # Parameters
 BUCKET      = "bgaze-odd-tasks-data"
 PREFIX      = "odd-tasks-data/"          # keep trailing slash
@@ -72,12 +81,13 @@ if __name__ == "__main__":
     try:
         main()
     except botocore.exceptions.NoCredentialsError:
+        env_file_msg = "\n• .env file: create a .env file with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY" if not ENV_FILE_LOADED else ""
         sys.exit(
-            textwrap.dedent("""
+            textwrap.dedent(f"""
             ❌  No AWS credentials found.
 
             • Kaggle:  add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-                       in the “Secrets” sidebar.
+                       in the "Secrets" sidebar.{env_file_msg}
             • Local :  run `aws configure`  OR  export the two env-vars.
             """).strip()
         )

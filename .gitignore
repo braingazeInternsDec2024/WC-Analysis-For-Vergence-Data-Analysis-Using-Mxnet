@@ -1,3 +1,4 @@
+.env
 output/
 data/
 EXTRA/
@@ -9,3 +10,4 @@ data with 100 trials/
 outputs with 100 trials/
 output_plots_prev/
 Results/
+downloaded_data/

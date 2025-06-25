@@ -226,12 +226,20 @@ class VergenceCalculator:
                 # bboxes = fd.detect(frame)
                 bboxes = list(fd.detect(frame))
                 print(f"Detected {len(bboxes)} faces.")
+                
+                landmarks = None
+                pupils = None
+                eye_centers = None
+                poi = None
+                yaw = 0
+                roll = 0
+                delta = None
 
                 for landmarks in fa.get_landmarks(frame, bboxes, calibrate=True):
                     # Calculate head pose
                     _, euler_angle = hp.get_head_pose(landmarks)
                     pitch, yaw, roll = euler_angle[:, 0]
-
+                    
                     eye_markers = np.take(landmarks, fa.eye_bound, axis=0)
                     eye_centers = np.average(eye_markers, axis=1)
                     eye_lengths = (landmarks[[39, 93]] - landmarks[[35, 89]])[:, 0]
