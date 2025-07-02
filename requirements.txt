@@ -1,12 +1,12 @@
-numpy
-pandas
-Pillow
-imageio
-scipy
-opencv-python
-matplotlib
+numpy=1.19.6 -> conda forge
+pandas -> conda forge
+Pillow -> conda forge
+imageio -> conda forge
+scipy -> conda forge
+opencv -> conda forge
+matplotlib -> conda forge
 tensorflow
-torch
-imageio
-dlib
-imutils
+torch -> conda forge
+dlib -> pip
+imutils -> pip
+mxnet -> pip

@@ -219,4 +219,3 @@ dependencies:
       - pillow==10.4.0
       - protobuf==3.20.3
       - requests==2.32.4
-prefix: /Users/molinduachintha/miniforge3/envs/legacy_env
