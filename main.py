@@ -22,8 +22,6 @@ def main(path2logs):
     calculator = VergenceCalculator(data, output_folder)
     calculator.process_videos()
 
-    # plot_all_csv_in_dir(output_folder)
-
 
 if __name__ == "__main__":
     # Default path is "data"
